@@ -32,7 +32,18 @@ Optional Parameters:
 ##Quick Start
 Download and Install
 ```
-git clone https://github.com/xuefzhao/VaLoR.git
+git clone https://github.com/mills-lab/valor.git
 cd VaLoR
 python setup install --user
 ```
+
+##Requirement for input file:
+###requirement for SV input in bed format:
+SV input in bed format should be consist of 4 columns, specifying the chromosome , start, end and description of the variance. The description column should specify the type of the variance (eg. DEL, DUP, INV, INS). For insertions, the description column should have either the sequence of the length of insertion, or both, separated by '_' 
+
+Here's an example of the bed input:
+chr1	831220	833732	DUP
+chr1	2093108	2095944	DEL
+chr1	2994972	2995286	DEL
+chr1	3935209	3935209	INS_191
+
