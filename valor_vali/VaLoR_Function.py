@@ -361,41 +361,6 @@ def complementary(seq):
 			elif i in 'atgcn':
 					seq2.append('atgcn'['tacgn'.index(i)])
 	return ''.join(seq2)
-def chop_pacbio_read_simple_short(bam_in,info,flank_length):
-	bps=info[2:]
-	block_length={}
-	for x in range(len(info[2:])-2):
-		block_length[chr(97+x)]=int(info[x+4])-int(info[x+3])
-	alA_len=np.sum([block_length[x] for x in info[1] if not x=='^'])
-	alRef_len=int(info[-1])-int(info[3])
-	len_cff=max([alA_len,alRef_len])
-	bam_in_new_list=bam_in_decide(bam_in,bps)
-	if bam_in_new_list=='': return [[],[],[]]
-	out=[]
-	out2=[]
-	out3=[]
-	tandem_test=[]
-	for bam_in_new in bam_in_new_list:
-		fbam=os.popen(r'''samtools view %s %s:%d-%d'''%(bam_in_new,bps[0],int(bps[1])-flank_length,int(bps[-1])+flank_length))
-		for line in fbam:
-			pbam=line.strip().split()
-			if not pbam in tandem_test:
-				tandem_test.append(pbam)
-				#out3.append(int(pbam[3])-int(bps[1])+flank_length)
-				if not pbam[0]=='@': 
-					if int(pbam[3])<int(bps[1])-flank_length+1:
-						align_info=cigar2alignstart(pbam[5],int(pbam[3]),bps,flank_length)
-						align_start=align_info[0]
-						miss_bp=align_info[1]+1
-						if not miss_bp>flank_length/2:
-							align_pos=int(pbam[3])
-							target_read=pbam[9][align_start:]
-							if len(target_read)>flank_length+len_cff:
-								out.append(target_read[:max([alA_len,alRef_len])+2*flank_length])
-								out2.append(miss_bp)
-								out3.append(pbam[0])
-		fbam.close()
-	return [out,out2,out3]
 def chop_pacbio_read_simple_insert(bam_in,info,flank_length,insert_seq):
 	bps=info[2:]
 	block_length={}
@@ -1716,6 +1681,189 @@ def pick_quality_score(ref_list,alt_list):
 	else:
 		min_out=min(out)
 	return 1/min_out-1
+
+def block_modify(block,chromos):
+    #eg of block=['chr16', '34911339', '34913149', 'chr16', '34913149', '34913438']
+    out=[]
+    for x in block:
+        if x in chromos:
+            if out==[]:    out.append([x])
+            else:
+                if not x in out[-1]:    out.append([x])
+        else:   out[-1].append(x)
+    out_new=[]
+    for x in out:
+        out_new.append([])
+        for y in x:
+            if x.count(y)==1:
+                out_new[-1].append(y)
+    out_new_2=[]
+    for x in out_new:
+        if len(x)==3:
+            out_new_2.append(x)
+        else:
+            for y in range((len(x)-1)/2):
+                out_new_2.append([x[0],x[2*y+1],x[2*y+2]])
+    return out_new_2
+def chop_pacbio_read_simple_short(bam_in,sv_info,flank_length):
+	#eg of sv_info = ['a/a','/','chr1', 101553562, 101553905]
+	block_length={}
+	for x in range(len(sv_info)-2):
+		block_length[chr(97+x)]=int(sv_info[x+2])-int(sv_info[x+1])
+
+	alA_len=np.sum([block_length[x] for x in sv_info[1] if not x=='^'])
+	alRef_len=int(sv_info[-1])-int(sv_info[1])
+	len_cff=max([alA_len,alRef_len])
+	bam_in_new_list=bam_in_decide(bam_in,bps)
+	if bam_in_new_list=='': return [[],[],[]]
+	out=[]
+	out2=[]
+	out3=[]
+	tandem_test=[]
+	for bam_in_new in bam_in_new_list:
+		fbam=os.popen(r'''samtools view %s %s:%d-%d'''%(bam_in_new,bps[0],int(bps[1])-flank_length,int(bps[-1])+flank_length))
+		for line in fbam:
+			pbam=line.strip().split()
+			if not pbam in tandem_test:
+				tandem_test.append(pbam)
+				#out3.append(int(pbam[3])-int(bps[1])+flank_length)
+				if not pbam[0]=='@': 
+					if int(pbam[3])<int(bps[1])-flank_length+1:
+						align_info=cigar2alignstart(pbam[5],int(pbam[3]),bps,flank_length)
+						align_start=align_info[0]
+						miss_bp=align_info[1]+1
+						if not miss_bp>flank_length/2:
+							align_pos=int(pbam[3])
+							target_read=pbam[9][align_start:]
+							if len(target_read)>flank_length+len_cff:
+								out.append(target_read[:max([alA_len,alRef_len])+2*flank_length])
+								out2.append(miss_bp)
+								out3.append(pbam[0])
+		fbam.close()
+	return [out,out2,out3]
+def letter_subgroup(k2_hap):
+    #eg of k2_hap='ac^b^'
+    inverted_sv=[]
+    for x in k2_hap:
+        if not x=='^':  inverted_sv.append(x)
+        else:   inverted_sv[-1]+='^'
+    inverted_sv_2=[]
+    for x in inverted_sv:
+        if inverted_sv_2==[]: inverted_sv_2.append(x)
+        else:
+            if not '^' in inverted_sv_2[-1] and not '^' in x and ord(x)-ord(inverted_sv_2[-1][-1])==1:  inverted_sv_2[-1]+=x
+            elif '^' in inverted_sv_2[-1] and '^'  in x and ord(x[0])-ord(inverted_sv_2[-1][-2])==-1:   inverted_sv_2[-1]+=x
+            else:   inverted_sv_2.append(x)
+    inverted_sv_3=[]
+    for i in inverted_sv_2:
+        if not '^' in i:    inverted_sv_3.append(i)
+        else:
+            inverted_sv_3.append(i.replace('^','')[::-1]+'^')
+    return inverted_sv_3
+def let_to_block_info(let,let_hash):
+    #eg of let='ab'; eg of let_hash={'a': ['chrY', '10818935', '10819073'], 'b': ['chrY', '10819073', '10926507'], '+': ['chrY', '10926507', '10927007'], '-': ['chrY', '10818435', 10818935]}
+    out=[]
+    for i in let:
+        if not i=='^':
+            out+=let_hash[i]
+    return(block_modify(out,chromos))
+def simple_del_diploid_decide(k1,k2):
+    #eg of k1='ab/ab'   ; eg of k2='a/a'
+    k2_haps=k2.split('/')
+    k1_hap=k1.split('/')[0]
+    out=[]
+    for x in k2_haps:
+        if x==k1_hap: out.append('NA')
+        else:
+            out.append(simple_del_haploid_decide(k1_hap,x))
+    return out
+
+def simple_del_haploid_decide(k1_hap,k2_hap):
+    #eg of k1_hap='ab'  ;    eg of k2_hap='b'
+    if k1_hap==k2_hap: return 'FALSE'   #no alt
+    if k2_hap=='': return [i for i in k1_hap]
+    if '^' in k2_hap:   return 'FALSE'  #check if inv included
+    dup_test=[k2_hap.count(x) for x in k2_hap]
+    if max(dup_test)>1:     return 'FALSE'  #check if dup included
+    if len(k2_hap)==1 and len(k1_hap)>1:    return letter_subgroup(''.join([i for i in k1_hap if not i in k2_hap]))   #del
+    pos_compare=[ord(k2_hap[i+1])-ord(k2_hap[i]) for i in range(len(k2_hap)-1)]
+    if min(pos_compare)<1: return 'FALSE'
+    return letter_subgroup(''.join([i for i in k1_hap if not i in k2_hap]))
+
+def bp_to_chr_hash(bps,chromos,flank_length=500):
+    #eg of bps=['chr16', '34910548', '34911339', '34913149', '34913438', '36181068', '36181482']
+    temp1=[]
+    for i in bps:
+        if i in chromos:
+            temp1.append([i])
+        else:
+            temp1[-1].append(i)
+    out={}
+    rec=-1
+    for k1 in temp1:
+        for k2 in range(len(k1[2:])):
+            rec+=1
+            out[chr(97+rec)]=[k1[0],k1[k2+1],k1[k2+2]]
+    out['+']=[out[sorted(out.keys())[-1]][0],out[sorted(out.keys())[-1]][2],str(int(out[sorted(out.keys())[-1]][2])+flank_length)]
+    out['-']=[out['a'][0],str(int(out['a'][1])-flank_length),int(out['a'][1])]
+    return out
+
+
+global ref,chromos
+global default_flank_length
+default_flank_length=500
+global default_read_length
+default_read_length=4000	#average length of pacbio read
+global default_max_sv_test
+default_max_sv_test=10000 #when size of a sv block excessed default_max_sv_test, try junctions instead of event
+def simple_del_Valor(sv_info,bam_in,ref):
+	flank_length=[default_flank_length if sv_info[2]-sv_info[1]>default_flank_length else sv_info[2]-sv_info[1]]
+	if sv_info[2]-sv_info[1]<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
+		all_reads=chop_pacbio_read_simple_short(bam_in,['a/a','/']sv_info,flank_length)
+		all_reads_new=read_hash_minimize(all_reads)
+
+def calcu_eu_dis_svelter(global_list,svelter_list,plt_figure_index,PacVal_score_hash_new,PacVal_score_hash,km):
+	[lenght_cff,dots_num_cff,clu_dis_cff, point_dis_cff, simple_dis_cff, invert_base, dict_opts, out_path, out_file_Cannot_Validate, sample_name, start, delta, bam_in, ref, chromos, region_QC_Cff, min_length, min_read_compare, case_number, qc_file_name]=global_list
+	[PacVal_file_in,PacVal_file_out]=svelter_list
+	[k1,k2,k3]=km
+	simple_del_test=simple_del_diploid_decide(k1,k2)
+	if not 'FALSE' in simple_del_test:
+		chr_let_hash=bp_to_chr_hash(k3,chromos)
+		del_block=[let_to_block_info(i,chr_let_hash) for i in simple_del_test]
+		if len(unify_list(del_block))==1: #homo- event
+			SV_rec=1
+			for sv_block in del_block[0]:
+				sv_info=[sv_block[0]]+[int(i) for i in sv_block[1:]]
+
+		else:
+
+
+	if k2.split('/')[0]==k2.split('/')[1]:
+		k2_new=[k2.split('/')[0]]
+	else:
+		k2_new=[i for i in k2.split('/') if not i==k1.split('/')[0]]
+	SV_rec=0
+	for alt_sv_sub in k2_new:
+		if alt_sv_sub==k1.split('/')[0]: continue
+		else:
+			SV_rec+=1
+			SV_index=float(str(k3[-1])+'.'+str(SV_rec))
+			info=[k1.split('/')[0],alt_sv_sub]+k3[:-1]
+			[ref_sv,alt_sv,chrom,bps]=[info[0],info[1],info[2],info[2:]]
+			flank_length=flank_length_calculate(bps)
+			if bps_check(bps,chromosomes)==0:
+				bl_len_hash=bl_len_hash_calculate(bps,ref_sv)
+				all_reads=chop_pacbio_read_simple_short(bam_in,info,flank_length)
+				all_reads_new=read_hash_minimize(all_reads)
+				if len(all_reads_new[0])>10:
+					[PacVal_score_hash_new,PacVal_score_hash]=calcu_eu_dis_short(global_list,svelter_list,plt_figure_index,PacVal_score_hash_new,PacVal_score_hash,info,SV_index,all_reads_new,flank_length)
+				else:
+					[PacVal_score_hash_new,PacVal_score_hash]=calcu_eu_dis_svelter_long(global_list,svelter_list,plt_figure_index,PacVal_score_hash_new,PacVal_score_hash,info,SV_index)
+			else:
+				[PacVal_score_hash_new,PacVal_score_hash]=calcu_eu_dis_svelter_long(global_list,svelter_list,plt_figure_index,PacVal_score_hash_new,PacVal_score_hash,info,SV_index)
+	return [PacVal_score_hash_new,PacVal_score_hash]
+
+
 def calcu_eu_dis_short(global_list,svelter_list,plt_figure_index,PacVal_score_hash_new,PacVal_score_hash,info,SV_index,all_reads,flank_length):
 	#eg of info:['abc','abac','chr9', '23333862', '23334053', '23334119', '23334359']
 	[lenght_cff,dots_num_cff,clu_dis_cff, point_dis_cff, simple_dis_cff, invert_base, dict_opts, out_path, out_file_Cannot_Validate, sample_name, start, delta, bam_in, ref, chromosomes, region_QC_Cff, min_length, min_read_compare, case_number, qc_file_name]=global_list
