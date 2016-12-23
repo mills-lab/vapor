@@ -4,18 +4,21 @@ import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import math
 import rpy2
+import scipy
+import sys
+import valor_vali.plotting as plotting
+import scipy.stats
+import scipy.optimize
 from rpy2.robjects.packages import importr
 from rpy2.robjects.vectors import IntVector, FloatVector, StrVector
-import scipy
 from scipy.cluster.vq import vq, kmeans, whiten
 from scipy import stats
 from scipy.stats import linregress
 from scipy.spatial import distance
 from sklearn import cluster
 from sklearn import cluster
-import sys
-import valor_vali.plotting as plotting
 global invert_base
 invert_base = { 'A' : 'T', 'T' : 'A', 'C' : 'G', 'G' : 'C','N' : 'N','a' : 't', 't' : 'a', 'c' : 'g', 'g' : 'c','n' : 'n'}
 global default_flank_length
@@ -24,6 +27,7 @@ global default_read_length
 default_read_length=4000    #average length of pacbio read
 global default_max_sv_test
 default_max_sv_test=10000 #when size of a sv block excessed default_max_sv_test, try junctions instead of event
+
 def alt_seq_readin(ref,info,flank_length):
     #eg of info=('abcde/abcde', 'db/db', '1', '14436355', '14436655', '14437075', '14438241', '14438566', '14438940']
     block_hash={}
@@ -64,6 +68,7 @@ def alt_seq_readin(ref,info,flank_length):
                     out[rec]+=ref_seq_readin(ref,block_hash[y[0]][0],block_hash[y[0]][1],block_hash[y[0]][2],'TRUE')
         out[0]+=ref_seq_readin(ref,block_hash['+'][0],block_hash['+'][1],block_hash['+'][2])
         return [out[0],out[0]]
+
 def bam_in_decide(bam_in,bps):
     if os.path.isfile(bam_in):
         return [bam_in]
@@ -85,6 +90,7 @@ def bam_in_decide(bam_in,bps):
                 if flag==0:
                     temp_bam_in.append(bam_in_path+k1)
         return temp_bam_in
+
 def block_modify(block,chromos):
     #eg of block=['chr16', '34911339', '34913149', 'chr16', '34913149', '34913438']
     out=[]
@@ -108,6 +114,7 @@ def block_modify(block,chromos):
             for y in range((len(x)-1)/2):
                 out_new_2.append([x[0],x[2*y+1],x[2*y+2]])
     return out_new_2
+
 def bp_to_chr_hash(bps,chromos,flank_length=500):
     #eg of bps=['chr16', '34910548', '34911339', '34913149', '34913438', '36181068', '36181482']
     temp1=[]
@@ -125,12 +132,14 @@ def bp_to_chr_hash(bps,chromos,flank_length=500):
     out['+']=[out[sorted(out.keys())[-1]][0],out[sorted(out.keys())[-1]][2],str(int(out[sorted(out.keys())[-1]][2])+flank_length)]
     out['-']=[out['a'][0],str(int(out['a'][1])-flank_length),int(out['a'][1])]
     return out
+
 def block_around_check(alt_allele,ref_allele):
     #eg of alt_allele='abcab'  eg of ref_allele='abcd'
     alt_juncs=[[['-']+letter_split(alt_allele)+['+']][0][j:j+2] for j in range(len(letter_split(alt_allele))+1)]
     ref_juncs=[[['-']+letter_split(ref_allele)+['+']][0][j:j+2] for j in range(len(letter_split(alt_allele))+1)]
     new_juncs=[i for i in alt_juncs if not i in ref_juncs]
     return new_juncs
+
 def block_subsplot(bp_list,chromos):
     #eg of bp_list=['chr1', '9061390', '9061470', 'chr14', '93246136', '93248034']
     out=[]
@@ -138,15 +147,17 @@ def block_subsplot(bp_list,chromos):
         if not x in chromos:    out[-1].append(int(x))
         else:   out.append([x])
     return out
+
 def calcu_log10(x):
     if x==0:
         return 0
     else:
         return np.log10(x)
-def calcu_valor_single_read_score_abs_dis_m1(ref_seq,alt_seq,pacbio_read_info,window_size):
-    ref_dotdata=dotdata(window_size,pacbio_read_info[0],ref_seq[pacbio_read_info[1]:])
-    alt_dotdata=dotdata(window_size,pacbio_read_info[0],alt_seq[pacbio_read_info[1]:])
-    if len(ref_dotdata)>0 and len(alt_dotdata)>0:
+
+def calcu_valor_single_read_score_abs_dis_m1(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
         [ref_clean_dotdata,ref_kept_segs]=clean_dotdata_m1(ref_dotdata)
         [alt_clean_dotdata,alt_kept_segs]=clean_dotdata_m1(alt_dotdata)
         ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
@@ -158,49 +169,107 @@ def calcu_valor_single_read_score_abs_dis_m1(ref_seq,alt_seq,pacbio_read_info,wi
         if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
             return [eu_dis_abs_calcu(ref_clean_dotdata),eu_dis_abs_calcu(alt_clean_dotdata)]
         else:    
-            return [1,1]
+            return [0,0]
     else:
-        return [1,1]
-def calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,pacbio_read_info,window_size):
-    ref_dotdata=dotdata(window_size,pacbio_read_info[0],ref_seq[pacbio_read_info[1]:])
-    alt_dotdata=dotdata(window_size,pacbio_read_info[0],alt_seq[pacbio_read_info[1]:])
-    if len(ref_dotdata)>0 and len(alt_dotdata)>0:
-        [ref_clean_dotdata,ref_kept_segs]=clean_dotdata_diagnal_m1b(ref_dotdata)
-        [alt_clean_dotdata,alt_kept_segs]=clean_dotdata_diagnal_m1b(alt_dotdata)
-        ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
-        alt_left=[i for i in alt_dotdata if not list(i) in alt_clean_dotdata]
-        [ref_anti_diag_clean_dotdata,ref_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(ref_left)
-        [alt_anti_diag_clean_dotdata,alt_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(alt_left)
-        ref_clean_dotdata+=ref_anti_diag_clean_dotdata
-        alt_clean_dotdata+=alt_anti_diag_clean_dotdata
+        return [0,0]
+
+def calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
+        #[ref_clean_dotdata,ref_kept_segs]=clean_dotdata_diagnal_m1b(ref_dotdata)
+        #[alt_clean_dotdata,alt_kept_segs]=clean_dotdata_diagnal_m1b(alt_dotdata)
+        #ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
+        #alt_left=[i for i in alt_dotdata if not list(i) in alt_clean_dotdata]
+        #[ref_anti_diag_clean_dotdata,ref_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(ref_left)
+        #[alt_anti_diag_clean_dotdata,alt_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(alt_left)
+        #ref_clean_dotdata+=ref_anti_diag_clean_dotdata
+        #alt_clean_dotdata+=alt_anti_diag_clean_dotdata
+        ref_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata)
+        alt_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(alt_dotdata)
         if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
             return [eu_dis_abs_calcu(ref_clean_dotdata),eu_dis_abs_calcu(alt_clean_dotdata)]
         else:    
-            return [1,1]
+            return [0,0]
     else:
-        return [1,1]
-def calcu_valor_single_read_score_directed_dis_m1b(ref_seq,alt_seq,pacbio_read_info,window_size):
-    ref_dotdata=dotdata(window_size,pacbio_read_info[0],ref_seq[pacbio_read_info[1]:])
-    alt_dotdata=dotdata(window_size,pacbio_read_info[0],alt_seq[pacbio_read_info[1]:])
-    if len(ref_dotdata)>0 and len(alt_dotdata)>0:
-        [ref_clean_dotdata,ref_kept_segs]=clean_dotdata_diagnal_m1b(ref_dotdata)
-        [alt_clean_dotdata,alt_kept_segs]=clean_dotdata_diagnal_m1b(alt_dotdata)
-        ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
-        alt_left=[i for i in alt_dotdata if not list(i) in alt_clean_dotdata]
-        [ref_anti_diag_clean_dotdata,ref_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(ref_left)
-        [alt_anti_diag_clean_dotdata,alt_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(alt_left)
-        ref_clean_dotdata+=ref_anti_diag_clean_dotdata
-        alt_clean_dotdata+=alt_anti_diag_clean_dotdata
+        return [0,0]
+
+def calcu_valor_single_read_score_directed_dis_m1b(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
+        #[ref_clean_dotdata,ref_kept_segs]=clean_dotdata_diagnal_m1b(ref_dotdata)
+        #[alt_clean_dotdata,alt_kept_segs]=clean_dotdata_diagnal_m1b(alt_dotdata)
+        #ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
+        #alt_left=[i for i in alt_dotdata if not list(i) in alt_clean_dotdata]
+        #[ref_anti_diag_clean_dotdata,ref_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(ref_left)
+        #[alt_anti_diag_clean_dotdata,alt_anti_diag_kept_segs]=clean_dotdata_anti_diagnal_m1b(alt_left)
+        #ref_clean_dotdata+=ref_anti_diag_clean_dotdata
+        #alt_clean_dotdata+=alt_anti_diag_clean_dotdata
+        ref_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata)
+        alt_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(alt_dotdata)
         if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
             return [eu_dis_reg_calcu(ref_clean_dotdata),eu_dis_reg_calcu(alt_clean_dotdata)]
+            #return [eu_dis_abs_calcu(take_off_symmetric_dots(ref_clean_dotdata)),eu_dis_abs_calcu(take_off_symmetric_dots(alt_clean_dotdata))]
         else:    
-            return [1,1]
+            return [0,0]
     else:
-        return [1,1]
-def calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,pacbio_read_info,window_size):
-    ref_dotdata=dotdata(window_size,pacbio_read_info[0],ref_seq[pacbio_read_info[1]:])
-    alt_dotdata=dotdata(window_size,pacbio_read_info[0],alt_seq[pacbio_read_info[1]:])
-    if len(ref_dotdata)>0 and len(alt_dotdata)>0:
+        return [0,0]
+
+def calcu_valor_single_read_score_directed_dis_m1b_not_really(ref_seq,alt_seq,x,window_size,ref_bps,alt_bps):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
+        ref_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata)
+        alt_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(alt_dotdata)
+        if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
+            return [abs(eu_dis_region_calcu(ref_clean_dotdata,ref_bps)),abs(eu_dis_region_calcu(alt_clean_dotdata,alt_bps))]
+            #return [eu_dis_abs_calcu(take_off_symmetric_dots(ref_clean_dotdata)),eu_dis_abs_calcu(take_off_symmetric_dots(alt_clean_dotdata))]
+        else:    
+            return [0,0]
+    else:
+        return [0,0]
+
+def calcu_valor_single_read_score_directed_dis_m1b_redefine_diagnal(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
+        ref_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata)
+        alt_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(alt_dotdata)
+        ref_new_intercept=dis_to_diagnal_most_abundant_defined(ref_clean_dotdata)
+        alt_new_intercept=dis_to_diagnal_most_abundant_defined(alt_clean_dotdata)
+        if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
+            return [abs(eu_dis_dir_calcu([[i[0]+ref_new_intercept,i[1]] for i in ref_clean_dotdata])),
+                    abs(eu_dis_dir_calcu([[i[0]+alt_new_intercept,i[1]] for i in alt_clean_dotdata]))]
+            #return [abs(eu_dis_region_calcu(ref_clean_dotdata,ref_bps)),abs(eu_dis_region_calcu(alt_clean_dotdata,alt_bps))]
+            #return [eu_dis_abs_calcu(take_off_symmetric_dots(ref_clean_dotdata)),eu_dis_abs_calcu(take_off_symmetric_dots(alt_clean_dotdata))]
+        else:    
+            return [0,0]
+    else:
+        return [0,0]
+
+def calcu_valor_single_read_score_directed_dis_m1b_maybe(ref_seq,alt_seq,x,window_size,dup_block_bps):
+    #ref_ref_dotdata=dotdata(window_size,ref_seq[x[1]:],ref_seq[x[1]:])
+    #alt_alt_dotdata=dotdata(window_size,alt_seq[x[1]:],alt_seq[x[1]:])
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    #ref_ref_lines=ref_ref_deviate_lines_describe(ref_ref_dotdata)
+    #alt_alt_lines=ref_ref_deviate_lines_describe(alt_alt_dotdata)
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
+        ref_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata)
+        alt_clean_dotdata=clean_dotdata_diagnal_and_anti_diagnal(alt_dotdata)
+        if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
+            return [abs(eu_dis_abs_calcu(ref_clean_dotdata)),abs(eu_dis_reg_dup_block_calcu(alt_clean_dotdata,dup_block_bps))]
+            #return [eu_dis_abs_calcu(take_off_symmetric_dots(ref_clean_dotdata)),eu_dis_abs_calcu(take_off_symmetric_dots(alt_clean_dotdata))]
+        else:    
+            return [0,0]
+    else:
+        return [0,0]
+
+def calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
         [ref_clean_dotdata,ref_kept_segs]=clean_dotdata_diagnal_m1b(ref_dotdata)
         [alt_clean_dotdata,alt_kept_segs]=clean_dotdata_diagnal_m1b(alt_dotdata)
         ref_left=[i for i in ref_dotdata if not list(i) in ref_clean_dotdata]
@@ -212,21 +281,23 @@ def calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,pacbio_read_
         if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
             return [eu_dis_dots_within_10perc(alt_clean_dotdata),eu_dis_dots_within_10perc(ref_clean_dotdata)]    #if prediction correct [large, small]
         else:    
-            return [1,1]
+            return [0,0]
     else:
-        return [1,1]
-def calcu_valor_single_read_score_abs_dis_m2(ref_seq,alt_seq,pacbio_read_info,window_size):
-    ref_dotdata=dotdata(window_size,pacbio_read_info[0],ref_seq[pacbio_read_info[1]:])
-    alt_dotdata=dotdata(window_size,pacbio_read_info[0],alt_seq[pacbio_read_info[1]:])
-    if len(ref_dotdata)>0 and len(alt_dotdata)>0:
+        return [0,0]
+
+def calcu_valor_single_read_score_abs_dis_m2(ref_seq,alt_seq,x,window_size):
+    ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
+    alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
+    if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
         [ref_clean_dotdata,ref_kept_segs]=clean_dotdata_m2(ref_dotdata)
         [alt_clean_dotdata,alt_kept_segs]=clean_dotdata_m2(alt_dotdata)
         if len(ref_clean_dotdata)>0 and len(alt_clean_dotdata)>0:
             return [eu_dis_abs_calcu(ref_clean_dotdata),eu_dis_abs_calcu(alt_clean_dotdata)]
         else:    
-            return [1,1]
+            return [0,0]
     else:
-        return [1,1]
+        return [0,0]
+
 def cigar2alignstart_by_pos(cigar,align_start,start,end):
     #eg cigar2alignstart(pbam[5],int(pbam[3]),bps)
     import re
@@ -256,6 +327,7 @@ def cigar2alignstart_by_pos(cigar,align_start,start,end):
         return [new_read_rec,new_start_dis]
     else:
         return [read_rec,start_dis]
+
 def chop_pacbio_read_by_pos(bam_in_new,chrom,start,end,flank_length):
     fbam=os.popen(r'''samtools view %s %s:%d-%d'''%(bam_in_new,chrom,start,end))
     out=[]
@@ -272,6 +344,7 @@ def chop_pacbio_read_by_pos(bam_in_new,chrom,start,end,flank_length):
                         out.append([target_read[:end-start-miss_bp],miss_bp,pbam[0]])
     fbam.close()
     return out
+
 def chromos_readin(ref):
     fin=open(ref+'.fai')
     chromos=[]
@@ -280,6 +353,7 @@ def chromos_readin(ref):
             chromos.append(pin[0])
     fin.close()
     return chromos
+
 def cluster_range_decide(other_cluster):
     out=[]
     for x in other_cluster:
@@ -287,12 +361,14 @@ def cluster_range_decide(other_cluster):
         out[-1].append([min(x[0]),max(x[0])])
         out[-1].append([min(x[1]),max(x[1])])
     return out
+
 def cluster_size_decide(range_cluster):
     out=[]
     for x in range_cluster:
         size=(x[0][1]-x[0][0])*(x[1][1]-x[1][0])
         out.append(np.sqrt(size))
     return out
+
 def clean_dotdata_m1(ref_dotdata):
     #cluster dots based on their distance to diagnal
     x_axis=[i[0] for i in ref_dotdata]
@@ -309,8 +385,10 @@ def clean_dotdata_m1(ref_dotdata):
     out=[]
     for x in kept_dot:    out+=x
     return [out,kept_region]
+
 def clean_dotdata_diagnal_m1b(ref_dotdata):
     #cluster dots based on their distance to diagnal
+    if ref_dotdata==[]:    return [[],[]]
     x_axis=[i[0] for i in ref_dotdata]
     y_axis=[i[1] for i in ref_dotdata]
     dis_to_diagnal=[y_axis[i]-x_axis[i] for i in range(len(x_axis))]
@@ -321,6 +399,7 @@ def clean_dotdata_diagnal_m1b(ref_dotdata):
         kept_dot+=temp
     kept_region=[[x[0],x[1]] for x in kept_dot]
     return [kept_dot,kept_region]
+
 def clean_dotdata_anti_diagnal_m1b(ref_dotdata):
     #cluster dots based on their distance to diagnal
     if ref_dotdata==[]:    return [[],[]]
@@ -334,6 +413,25 @@ def clean_dotdata_anti_diagnal_m1b(ref_dotdata):
         kept_dot+=temp
     kept_region=[[x[0],x[1]] for x in kept_dot]
     return [kept_dot,kept_region]
+
+def clean_dotdata_diagnal_and_anti_diagnal(ref_dotdata):
+    if ref_dotdata==[]:    return [[],[]]
+    x_axis=[i[0] for i in ref_dotdata]
+    y_axis=[i[1] for i in ref_dotdata]
+    dis_to_diagnal=[y_axis[i]-x_axis[i] for i in range(len(x_axis))]
+    dis_to_anti_diagnal=[y_axis[i]+x_axis[i] for i in range(len(x_axis))]
+    #[kept_dot_x,removed_dot_x]=dis_cluster_2(x_axis,dis_cff=10)
+    #[kept_dot_y,removed_dot_y]=dis_cluster_2(y_axis,dis_cff=10)
+    [kept_dot_diag,removed_dot_diag]=dis_cluster_2(dis_to_diagnal,dis_cff=10)
+    [kept_dot_anti_diag,removed_dot_anti_diag]=dis_cluster_2(dis_to_anti_diagnal,dis_cff=10)
+    rec=-1
+    kept_dot=[]
+    for x in ref_dotdata:
+        rec+=1
+        if rec in removed_dot_diag and rec in removed_dot_anti_diag:   continue
+        else:   kept_dot.append(x)
+    return kept_dot
+
 def clean_dotdata_m2(ref_dotdata):
     #keep dots closest to diagnal
     data_hash={}
@@ -343,6 +441,7 @@ def clean_dotdata_m2(ref_dotdata):
             if abs(x[1]-x[0])<abs(data_hash[x[0]]-x[0]):    data_hash[x[0]]=x[1]
     out=[[[i,data_hash[i]] for i in sorted(data_hash.keys())],[]]
     return out
+
 def complementary(seq):
     seq2=[]
     for i in seq:
@@ -351,6 +450,7 @@ def complementary(seq):
             elif i in 'atgcn':
                     seq2.append('atgcn'['tacgn'.index(i)])
     return ''.join(seq2)
+
 def compute_bic(kmeans,X):
     """
     Computes the BIC metric for a given clusters
@@ -385,11 +485,13 @@ def compute_bic(kmeans,X):
           (n[i] / 2) * calcu_log10(cl_var[i]) -
          ((n[i] - m) / 2) for i in xrange(m)]) - const_term
     return(BIC)
+
 def dotdata(kmerlen,seq1, seq2):
     nth_base = 1
     inversions = True
     hits = kmerhits(seq1, seq2, kmerlen, nth_base, inversions)
     return hits
+
 def dis_cluster(dis_to_diagnal,dis_cff=10):
     #eg of dis_list=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 683, 854, 0, 683, 854, 0, 683, 854, 0, 683, 854, 0, 683, 0, 683, 0, 683, 0, 683, 0, 341, 512, 683, 0, 341, 512, 683, 0, 341, 512, 683, 0, 341, 512, 683, 1025, 0, 341, 512, 683, 1025, 0, 170, 341, 512, 683, 1025, 0, 170, 341, 683, 854, 1025, 0, 170, 683, 854, 1025, 0, 683, 1025, 0, 0, 0, 0, 0, 0, 0, 0, 512, 0, 512, 0, 512, 1196, 0, 170, 341, 512, 854, 1196, 1367, 0, 170, 341, 512, 854, 1196, 1367, 0]
     sorted_list=sorted(dis_to_diagnal)
@@ -401,6 +503,34 @@ def dis_cluster(dis_to_diagnal,dis_cff=10):
             sub_group1.append([i])
     remove_noise_1=[i for i in sub_group1 if len(i)>50]
     return [[i for i in range(len(dis_to_diagnal)) if dis_to_diagnal[i] in j] for j in remove_noise_1]
+
+def dis_cluster_2(dis_to_diagnal,dis_cff=10):
+    #eg of dis_list=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 683, 854, 0, 683, 854, 0, 683, 854, 0, 683, 854, 0, 683, 0, 683, 0, 683, 0, 683, 0, 341, 512, 683, 0, 341, 512, 683, 0, 341, 512, 683, 0, 341, 512, 683, 1025, 0, 341, 512, 683, 1025, 0, 170, 341, 512, 683, 1025, 0, 170, 341, 683, 854, 1025, 0, 170, 683, 854, 1025, 0, 683, 1025, 0, 0, 0, 0, 0, 0, 0, 0, 512, 0, 512, 0, 512, 1196, 0, 170, 341, 512, 854, 1196, 1367, 0, 170, 341, 512, 854, 1196, 1367, 0]
+    sorted_list=sorted(dis_to_diagnal)
+    sub_group1=[[sorted_list[0]]]
+    for i in sorted_list[1:]:
+        if i-sub_group1[-1][-1]<dis_cff:
+            sub_group1[-1].append(i)
+        else:
+            sub_group1.append([i])
+    remove_noise_1=[i for i in sub_group1 if len(i)>10]
+    out1=[[i for i in range(len(dis_to_diagnal)) if dis_to_diagnal[i] in j] for j in remove_noise_1]
+    out_total=[]
+    for i in out1:  out_total+=i
+    out2=[i for i in range(len(dis_to_diagnal)) if not i in out_total]
+    return [out1,out2]
+
+def dis_to_diagnal_most_abundant_defined(alt_clean_dotdata):
+    dis_to_diagnal_list=[i[1]-i[0] for i in alt_clean_dotdata]
+    dis_range=[min(dis_to_diagnal_list)+i*float(max(dis_to_diagnal_list)-min(dis_to_diagnal_list))/10.0 for i in range(11)]
+    kept_list1=find_linonges_list(number_cluster(dis_to_diagnal_list,dis_range))
+    kept_list2=[]
+    for km in kept_list1:
+        j=[min(km)+i*float(max(km)-min(km))/10.0 for i in range(11)]
+        kept_list2+=find_linonges_list(number_cluster(km,j))
+    if len(kept_list2)==1:  return np.median(kept_list2[0])
+    else:                   return 0
+
 def dup_block_combine(dup_block,k1_hap,k2_hap):
     #eg of dup_block=['a', 'b'];     k1_hap='abcd'   ; k2_hap='abab'
     all_combines=[]
@@ -412,6 +542,7 @@ def dup_block_combine(dup_block,k1_hap,k2_hap):
         if k2_hap.count(x)>1:
             kept_dup.append(x)
     return dup_block_kept_qc(kept_dup)[::-1]
+
 def dup_block_combined_qc(all_combines):
     #eg of all_combines=['a', 'b', 'c', 'd', 'ab', 'ac', 'ad', 'bc', 'bd', 'cd', 'abc', 'abd', 'acd', 'bcd', 'abcd']
     out=[]
@@ -422,6 +553,7 @@ def dup_block_combined_qc(all_combines):
             if interval_dis_calcu_max(temp)>1: continue
             else:   out.append(x)
     return out
+
 def dup_block_kept_qc(kept_dup):
     #eg of kept_dup:
     out=[]
@@ -433,6 +565,7 @@ def dup_block_kept_qc(kept_dup):
                 if y in z:  flag_y+=1
             if flag_y==0:   out.append(y)
     return out
+
 def editDistance(seq1,seq2,cost_matrix,move_matrix,r,c):
     [iCost, dCost , mCost]=[1,1,1]
     if cost_matrix[r][c]==float('inf'):
@@ -466,23 +599,168 @@ def editDistance(seq1,seq2,cost_matrix,move_matrix,r,c):
                     move_matrix[r][c]=2
                     cost_matrix[r][c]=mDist
     return cost_matrix[r][c]
+
 def edit_dis_setup(seq1,seq2):
     cost_matrix=np.full((len(seq1)+1,len(seq2)+1),np.inf)
     move_matrix=np.full((len(seq1)+1,len(seq2)+1),-1.0)
     opt_dist=editDistance(seq1, seq2, cost_matrix,move_matrix, len(seq1), len(seq2))
     return opt_dist
+
 def eu_dis_abs_calcu(ref_clean_dotdata):
     #eg of ref_clean_dotdata=[[2380, 471], [2381, 472], [2382, 472], [2383, 472], [2384, 472], [2385, 472], [2386, 472], [2387, 472], [2388, 472], [2389, 473], [2390, 474], [2391, 475], [2402, 486], [2403, 487], [2404, 488], [2405, 489], [2406, 490], [2407, 491], [2408, 492], [2409, 493], [2410, 494], [2411, 495], [2418, 504], [2440, 528], [2441, 529], [2442, 530], [2443, 531], [2454, 542], [2455, 543], [2456, 544], [2473, 563], [2474, 564], [2475, 565], [2476, 566], [2477, 567], [2478, 568], [2479, 569], [2480, 570], [2481, 571], [2482, 572], [2483, 573], [2484, 574], [2485, 575], [2486, 576], [2487, 577], [2488, 578], [2489, 579], [2490, 580], [2500, 589], [2501, 590], [2502, 591], [2503, 592], [2504, 593], [2523, 613], [2524, 614], [2525, 615], [2526, 616], [2527, 617], [2528, 618], [2529, 619], [2530, 620], [2531, 621], [2532, 622], [2533, 623], [2557, 642], [2558, 643], [2559, 644], [2560, 645], [2561, 646], [2562, 647]]
     eu_dis_abs=[abs(i[0]-i[1]) for i in ref_clean_dotdata]
     return np.mean(eu_dis_abs)
-def eu_dis_reg_calcu(ref_clean_dotdata):
-    #eg of ref_clean_dotdata=[[2380, 471], [2381, 472], [2382, 472], [2383, 472], [2384, 472], [2385, 472], [2386, 472], [2387, 472], [2388, 472], [2389, 473], [2390, 474], [2391, 475], [2402, 486], [2403, 487], [2404, 488], [2405, 489], [2406, 490], [2407, 491], [2408, 492], [2409, 493], [2410, 494], [2411, 495], [2418, 504], [2440, 528], [2441, 529], [2442, 530], [2443, 531], [2454, 542], [2455, 543], [2456, 544], [2473, 563], [2474, 564], [2475, 565], [2476, 566], [2477, 567], [2478, 568], [2479, 569], [2480, 570], [2481, 571], [2482, 572], [2483, 573], [2484, 574], [2485, 575], [2486, 576], [2487, 577], [2488, 578], [2489, 579], [2490, 580], [2500, 589], [2501, 590], [2502, 591], [2503, 592], [2504, 593], [2523, 613], [2524, 614], [2525, 615], [2526, 616], [2527, 617], [2528, 618], [2529, 619], [2530, 620], [2531, 621], [2532, 622], [2533, 623], [2557, 642], [2558, 643], [2559, 644], [2560, 645], [2561, 646], [2562, 647]]
-    eu_dis_abs=[i[0]-i[1] for i in ref_clean_dotdata]
-    return abs(np.mean(eu_dis_abs))
+
+def eu_dis_single_dot(dot_pos):
+    #############################################
+    ####eg of dot_pos=(1212, 1217)
+    ####this function returns %deviation of the dot from diagnal
+    #############################################
+    if dot_pos[0]==0:   return abs(float(dot_pos[0]-dot_pos[1])/float(dot_pos[0]+1))
+    else:               return abs(float(dot_pos[0]-dot_pos[1])/float(dot_pos[0]))
+
+def eu_dis_dir_calcu(list_dotdata):
+    #eg of list_dotdata=[[2380, 471], [2381, 472], [2382, 472], [2383, 472], [2384, 472], [2385, 472], [2386, 472], [2387, 472], [2388, 472], [2389, 473], [2390, 474], [2391, 475], [2402, 486], [2403, 487], [2404, 488], [2405, 489], [2406, 490], [2407, 491], [2408, 492], [2409, 493], [2410, 494], [2411, 495], [2418, 504], [2440, 528], [2441, 529], [2442, 530], [2443, 531], [2454, 542], [2455, 543], [2456, 544], [2473, 563], [2474, 564], [2475, 565], [2476, 566], [2477, 567], [2478, 568], [2479, 569], [2480, 570], [2481, 571], [2482, 572], [2483, 573], [2484, 574], [2485, 575], [2486, 576], [2487, 577], [2488, 578], [2489, 579], [2490, 580], [2500, 589], [2501, 590], [2502, 591], [2503, 592], [2504, 593], [2523, 613], [2524, 614], [2525, 615], [2526, 616], [2527, 617], [2528, 618], [2529, 619], [2530, 620], [2531, 621], [2532, 622], [2533, 623], [2557, 642], [2558, 643], [2559, 644], [2560, 645], [2561, 646], [2562, 647]]
+    eu_dis_abs=[i[0]-i[1] for i in list_dotdata]
+    if eu_dis_abs==[]:  return 0.0001
+    else:               return np.mean(eu_dis_abs)
+
+def eu_dis_reg_calcu(list_dotdata):
+    ratio_new=eu_y_vs_x_ratio_calcu(list_dotdata)
+    eu_dis_abs=[ratio_new*i[0]-i[1] for i in list_dotdata if eu_dis_single_dot([ratio_new*i[0],i[1]])>0.15]
+    if eu_dis_abs==[]:  return 0.0001
+    else:               return abs(np.mean(eu_dis_abs))
+
 def eu_dis_dots_within_10perc(ref_clean_dotdata):
     #eg of ref_clean_dotdata=[[2380, 471], [2381, 472], [2382, 472], [2383, 472], [2384, 472], [2385, 472], [2386, 472], [2387, 472], [2388, 472], [2389, 473], [2390, 474], [2391, 475], [2402, 486], [2403, 487], [2404, 488], [2405, 489], [2406, 490], [2407, 491], [2408, 492], [2409, 493], [2410, 494], [2411, 495], [2418, 504], [2440, 528], [2441, 529], [2442, 530], [2443, 531], [2454, 542], [2455, 543], [2456, 544], [2473, 563], [2474, 564], [2475, 565], [2476, 566], [2477, 567], [2478, 568], [2479, 569], [2480, 570], [2481, 571], [2482, 572], [2483, 573], [2484, 574], [2485, 575], [2486, 576], [2487, 577], [2488, 578], [2489, 579], [2490, 580], [2500, 589], [2501, 590], [2502, 591], [2503, 592], [2504, 593], [2523, 613], [2524, 614], [2525, 615], [2526, 616], [2527, 617], [2528, 618], [2529, 619], [2530, 620], [2531, 621], [2532, 622], [2533, 623], [2557, 642], [2558, 643], [2559, 644], [2560, 645], [2561, 646], [2562, 647]]
     dis_10perc=[abs(float(i[0]-i[1])/float(i[0])) for i in ref_clean_dotdata if i[0]>0]
     return len([i for i in dis_10perc if i <0.1])    
+
+def eu_dis_region_calcu(list_dotdata,list_bps):
+    #eg of list_bps=[127906399, 127906515, 127907283, 127907399, 127907515]
+    ref_bps_new=[i-list_bps[0] for i in list_bps]
+    ref_region=[[] for i in range(len(ref_bps_new)-1)]
+    reca=0
+    recb=0
+    while True:
+        if reca==len(list_dotdata) or recb==len(ref_region): break
+        if list_dotdata[reca][0]<ref_bps_new[recb+1]:            
+            ref_region[recb].append(list_dotdata[reca])
+            reca+=1
+        else:
+            recb+=1
+    if reca<len(list_dotdata):
+        ref_region[-1]+=list_dotdata[reca:]
+    out=[eu_dis_dir_calcu(i) for i in ref_region]
+    print out
+    out_new=[i for i in out if abs(i)>1]
+    if out_new==[]:     return 0.0001
+    else:               return np.mean(out_new)
+
+def eu_dis_reg_dup_block_calcu(list_dotdata,dup_block_bps):
+    ref_region=[[] for i in range(len(dup_block_bps)+1)]
+    for x in list_dotdata:
+        if not x[0]<dup_block_bps[0][0] and not x[0]>dup_block_bps[0][1]:   ref_region[0].append(x)
+        elif not x[0]<dup_block_bps[1][0] and not x[0]>dup_block_bps[1][1]: ref_region[1].append(x)
+        else:                                                               ref_region[2].append(x)
+    out=[eu_dis_dir_calcu(i) for i in ref_region]
+    out[-1]=abs(out[-1])
+    out_new=[i for i in out if abs(i)>1]
+    if out_new==[]:     return 0.0001
+    else:               return np.mean(out_new)
+
+def eu_y_vs_x_ratio_single_dot(dot_pos):
+    #############################################
+    ####eg of dot_pos=(1212, 1217)
+    ####this function returns %deviation of the dot from diagnal
+    #############################################
+    if dot_pos[0]==0:   return 1
+    else:               return abs(float(dot_pos[1])/float(dot_pos[0]))
+
+def eu_y_vs_x_ratio_calcu(ref_clean_dotdata):
+    y_x_ratio_list=[round(eu_y_vs_x_ratio_single_dot(i),2) for i in ref_clean_dotdata if eu_dis_single_dot(i)<0.15]
+    if y_x_ratio_list==[]:  return 1
+    else:
+        if len(unify_list(y_x_ratio_list))>1:
+            nparam_density = scipy.stats.gaussian_kde(y_x_ratio_list)
+            test=scipy.optimize.fmin(lambda x:-nparam_density.pdf(x),1)
+            if abs(test[0]-1) <0.15:        return test[0]
+            else:   return 1
+        else:
+            return unify_list(y_x_ratio_list)[0]
+
+def number_cluster(dis_to_diagnal_list,dis_range):
+    dis_clu=[[] for i in dis_range]
+    reca=0
+    recb=1
+    dis_to_diagnal_list.sort()
+    while True:
+        if reca==len(dis_to_diagnal_list) or recb==len(dis_range): break
+        if dis_to_diagnal_list[reca]<dis_range[recb]:
+            dis_clu[recb-1].append(dis_to_diagnal_list[reca])
+            reca+=1
+        else:
+            recb+=1
+    if reca<len(dis_to_diagnal_list):
+        dis_clu[-1]+=dis_to_diagnal_list[reca:]
+    return dis_clu
+
+def take_off_symmetric_dots(list_dotdata):
+    left_part=[list_dotdata[i] for i in range(len(list_dotdata)/2)]
+    right_part=[list_dotdata[i][::-1] for i in [len(list_dotdata)-1-i for i in range(len(list_dotdata)/2)]]
+    left_new=[i for i in left_part if eu_dis_single_dot(i)>0.15]
+    right_new=[i for i in right_part if eu_dis_single_dot(i)>0.15]
+    sym_dots=[]
+    for i in left_new:
+        for j in right_new:
+            if abs(i[0]-j[0])<6 and abs(i[1]-j[1])<6:
+                sym_dots.append(i)
+                sym_dots.append(j[::-1])
+    out_dots=[i for i in list_dotdata if not i in sym_dots]
+    return out_dots
+
+def one_dimention_cluster_by_gap(dim1,gap,length):
+    out_hash={}
+    for k1 in range(len(dim1)):
+        if not dim1[k1] in out_hash.keys(): out_hash[dim1[k1]]=[]
+        out_hash[dim1[k1]].append(k1)
+    sorted_keys=sorted(out_hash.keys())
+    out=[[sorted_keys[0]]]
+    for k1 in sorted_keys[1:]:
+        if k1-out[-1][-1]>gap:  out.append([k1])
+        else:   out[-1].append(k1)
+    out2=[]
+    for k1 in out:
+        out2.append([])
+        for k2 in k1:
+            out2[-1]+=out_hash[k2]
+    out2=[i for i in out2 if len(i)>length]
+    return out2
+
+def two_dimention_cluster_by_gap(dim1,dim2,gap,length):
+    ####dim1 and dim2 are both one-dimention data list,of the same length;
+    ####dots with distance >gap on any dimention would be clustered into different group
+    ####return position of each dots in each subcluster
+    clu_1=one_dimention_cluster_by_gap(dim1,gap,length)
+    clu_2_sub=[[dim2[i] for i in j] for j in clu_1]
+    out=[]
+    for i in clu_2_sub:
+        out+=one_dimention_cluster_by_gap(i,gap,length)
+    return out
+
+def dot_to_line(list_dotdata,gap=50,length=10):
+    ####This function try to recognize lines in the dot plot
+    dis_to_diagnal=[i[1]-i[0] for i in list_dotdata]
+    cluster1=one_dimention_cluster_by_gap(dis_to_diagnal,gap,length)
+    dot_cluster1=[[list_dotdata[i] for i in j] for j in cluster1]
+    dis_to_anti_diagnal=[[i[1]+i[0] for i in j] for j in dot_cluster1]
+    cluster2=[one_dimention_cluster_by_gap(i,gap,length) for i in dis_to_anti_diagnal]
+    dot_cluster2=[ [[dot_cluster1[k][i] for i in j] for j in cluster2[k]] for k in range(len(cluster2))]
+    out=[]
+    for i in dot_cluster2:
+        for j in i: out.append(j)
+    return [[i[0],i[-1]] for i in out]
+
 def flank_length_calculate(bps):
     if int(bps[-1])-int(bps[1])<100:
         flank_length=(int(bps[-1])-int(bps[1]))
@@ -492,6 +770,7 @@ def flank_length_calculate(bps):
         else:
             flank_length=500
     return flank_length
+
 def genoCN_extract(pin):
     out=[0,0]
     rec_pos=-1
@@ -502,6 +781,7 @@ def genoCN_extract(pin):
     geno=[i.split(':')[rec_pos] for i in pin[9:]]
     out=[0 if i=='2' else 1 for i in geno]
     return out
+
 def genotype_extract(pin):
     out=[0,0]
     rec_pos=-1
@@ -512,21 +792,24 @@ def genotype_extract(pin):
     geno=[i.split(':')[rec_pos] for i in pin[9:]]
     for i in geno:
         if '/' in i:
-            if geno=='./.': out.append(1)
+            if i=='./.': out.append(1)
             else:   out.append(sum([int(j) for j in i.split('/')]))
         elif '|' in i:
-            if geno=='.|.': out.append(1)
+            if i=='.|.': out.append(1)
             else:   out.append(sum([int(j) for j in i.split('|')]))
         elif i=='.':    out.append(1)
     return out
+
 def INS_length_detect(pin):
     out=0
     for x in pin[7].split(';'):
         if 'SVLEN=' in x:
             out=int(x.split('=')[1])
     return out
+
 def intersect(a, b):
     return ''.join(sorted(list(set(a) & set(b))))
+
 def interval_dis_calcu_max(pos_check):
     #eg of pos_check=[97,98]
     if len(pos_check)>1:
@@ -534,6 +817,7 @@ def interval_dis_calcu_max(pos_check):
         return max(out)
     else:
         return 'NA'
+
 def k_means_cluster(data_list):
     if max(data_list[0])-min(data_list[0])>10 and max(data_list[1])-min(data_list[1])>10:
         array_diagnal=np.array([[data_list[0][x],data_list[1][x]] for x in range(len(data_list[0]))])
@@ -566,6 +850,7 @@ def k_means_cluster(data_list):
             return out
     else:
         return [data_list]
+
 def k_means_cluster_Predict(data_list,info):
     array_diagnal=np.array([[data_list[0][x],data_list[1][x]] for x in range(len(data_list[0]))])
     ks = range(1,len(info))
@@ -584,6 +869,7 @@ def k_means_cluster_Predict(data_list,info):
             group1=[[int(i) for i in array_diagnal[idx==x,0]],[int(i) for i in array_diagnal[idx==x,1]]]
             out.append(group1)
         return out
+
 def key_modify(key):
     if 'R' in key:
             key=key.replace('R','N')
@@ -626,6 +912,7 @@ def key_modify(key):
     if 'v' in key:
             key=key.replace('v','n')
     return key
+
 def kmerhits(seq1, seq2, kmerlen, nth_base=1, inversions=False):
     # hash table for finding hits
     lookup = {}
@@ -659,6 +946,7 @@ def kmerhits(seq1, seq2, kmerlen, nth_base=1, inversions=False):
                 # exact matches
                 break
     return hits
+
 def let_to_block_info(let,let_hash,chromos):
     #eg of let='ab'; eg of let_hash={'a': ['chrY', '10818935', '10819073'], 'b': ['chrY', '10819073', '10926507'], '+': ['chrY', '10926507', '10927007'], '-': ['chrY', '10818435', 10818935]}
     out=[]
@@ -666,6 +954,7 @@ def let_to_block_info(let,let_hash,chromos):
         if not i=='^':
             out+=let_hash[i]
     return(block_modify(out,chromos))
+
 def letter_subgroup(k2_hap):
     #eg of k2_hap='ac^b^'
     inverted_sv=[]
@@ -685,6 +974,7 @@ def letter_subgroup(k2_hap):
         else:
             inverted_sv_3.append(i.replace('^','')[::-1]+'^')
     return inverted_sv_3
+
 def letter_split(let):
     #eg of let='c^ba'
     out=[]
@@ -692,11 +982,13 @@ def letter_split(let):
         if not x=='^':  out.append(x)
         else:   out[-1]+=x
     return out
+
 def list_unify(list):
     out=[]
     for i in list:
         if not i in out:    out.append(i)
     return out
+
 def make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name):
     if not best_read_rec=='':
         if not best_read_rec==[]:
@@ -721,33 +1013,36 @@ def make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_s
             graphics.plot([min([i[0] for i in dotdata_record[3]]),max([i[0] for i in dotdata_record[3]])],[min([i[1] for i in dotdata_record[3]]),max([i[1] for i in dotdata_record[3]])],type='n',ylab='PacBio read',xlab='altered_reference')
             graphics.points([i[0] for i in dotdata_record[3]],[i[1] for i in dotdata_record[3]],col='red',pch='+')
             grdevices.dev_off()
-def minimize_pacbio_read_list(pacbio_read_info,ideal_list_length=20):
-    #eg of pacbio_read_info=chop_pacbio_read_by_pos(bam_in_new,chrom,start,end,flank_length)
-    if len(pacbio_read_info)>ideal_list_length:
+
+def minimize_pacbio_read_list(x,ideal_list_length=20):
+    #eg of x=chop_pacbio_read_by_pos(bam_in_new,chrom,start,end,flank_length)
+    if len(x)>ideal_list_length:
         out=[]
         temp_hash={}
-        for x in pacbio_read_info:
+        for x in x:
             if not x[1] in temp_hash.keys():    temp_hash[x[1]]=[x]
             else:    temp_hash[x[1]]+=[x]
         for x in sorted(temp_hash.keys()):
             if len(out)<ideal_list_length:    out+=temp_hash[x]
             return out[:ideal_list_length]
-    else: return pacbio_read_info
-def reverse(seq):
-    return seq[::-1]
+    else: return x
+
 def path_mkdir(path):
     if not os.path.isdir(path):
         os.system(r'''mkdir %s'''%(path))
+
 def path_modify(path):
     if not path[-1]=='/':
         path+='/'
     return path
+
 def polarity_detect(pin):
     out='+'
     for x in pin[7].split(';'):
         if 'MEIINFO=' in x:
             out=x.split(',')[-1]
     return out
+
 def qual_check_repetitive_region(dotdata_qual_check):
     #qual_check_R_2(dotdata_qual_check,txt_file)  #not necessary for validator
     diagnal=0
@@ -766,6 +1061,37 @@ def qual_check_repetitive_region(dotdata_qual_check):
     else:
         size_cluster=[0]
     return [float(diagnal)/float(len(dotdata_qual_check)),size_cluster]
+
+def reverse(seq):
+    return seq[::-1]
+
+def ref_ref_deviate_lines_calcu(list_dotdata):
+    ref_kept_deviate=[i for i in list_dotdata if eu_dis_single_dot(i) > 0 and i[1]>i[0]]
+    ref_left_wings=dot_to_line(ref_kept_deviate)
+    ref_left_new=[]
+    for x in ref_left_wings:
+        ref_left_new.append(x)
+        ref_left_new.append([[i[1],i[0]] for i in x])
+    out=[]
+    for x in ref_left_new:
+        if x[0][0]<x[1][0]: out.append(x)
+        else:               out.append([x[1],x[0]])
+    return [i for i in out if kept_lines_size_filter(i)=='TRUE']
+
+def ref_ref_deviate_lines_describe(list_dotdata):
+    ref_ref_lines=ref_ref_deviate_lines_calcu(list_dotdata)
+    out=[]
+    for line in ref_ref_lines:
+        ratio=round(float(line[1][1]-line[0][1])/float(line[1][0]-line[0][0]),0)
+        intercept=round(np.mean([line[1][1]-line[1][0],line[0][1]-line[0][0]]),0)
+        out.append([ratio,intercept,line[0][0],line[1][0]])
+    return out
+
+def ref_deviate_lines_calcu(list_dotdata):
+    ref_kept_deviate=[i for i in list_dotdata if eu_dis_single_dot(i) > 0.15]
+    ref_left_wings=dot_to_line(ref_kept_deviate)
+    return    [i for i in ref_left_wings if kept_lines_size_filter(i)=='TRUE']
+
 def simple_del_diploid_decide(k1,k2):
     #eg of k1='ab/ab'   ; eg of k2='a/a'
     k2_haps=k2.split('/')
@@ -776,6 +1102,7 @@ def simple_del_diploid_decide(k1,k2):
         else:
             out.append(simple_del_haploid_decide(k1_hap,x))
     return out
+
 def simple_del_haploid_decide(k1_hap,k2_hap):
     #eg of k1_hap='ab'  ;    eg of k2_hap='b'
     if k1_hap==k2_hap: return 'FALSE'   #no alt
@@ -787,6 +1114,7 @@ def simple_del_haploid_decide(k1_hap,k2_hap):
     pos_compare=[ord(k2_hap[i+1])-ord(k2_hap[i]) for i in range(len(k2_hap)-1)]
     if min(pos_compare)<1: return 'FALSE'
     return letter_subgroup(''.join([i for i in k1_hap if not i in k2_hap]))
+
 def simple_inv_diploid_decide(k1,k2):
     #eg of k1='ab/ab'   ; eg of k2='ab^/ab'
     k2_haps=k2.split('/')
@@ -797,6 +1125,7 @@ def simple_inv_diploid_decide(k1,k2):
         else:
             out.append(simple_inv_haploid_decide(k1_hap,x))
     return out
+
 def simple_inv_haploid_decide(k1_hap,k2_hap):
     #eg of k1_hap='ab'  ;    eg of k2_hap='b^a^'
     if not '^' in k2_hap:   return 'FALSE'      #if not block inverted
@@ -806,6 +1135,7 @@ def simple_inv_haploid_decide(k1_hap,k2_hap):
     inverted_sv_new=letter_subgroup(k2_hap)
     if ''.join([i.replace('^','') for i in inverted_sv_new])==k1_hap: return [i[:-1] for i in inverted_sv_new if '^' in i]
     else:   return 'FALSE'
+
 def simple_tandup_diploid_decide(k1,k2):
     #eg of k1='ab/ab'   ; eg of k2='abb/ab'
     k2_haps=k2.split('/')
@@ -816,6 +1146,7 @@ def simple_tandup_diploid_decide(k1,k2):
         else:
             out.append(simple_tandup_haploid_decide(k1_hap,x))
     return out
+
 def simple_tandup_haploid_decide(k1_hap,k2_hap):
     if '^' in k2_hap:   return 'FALSE'
     dup_count=[k2_hap.count(i) for i in k1_hap]
@@ -848,6 +1179,7 @@ def simple_tandup_haploid_decide(k1_hap,k2_hap):
     if ''.join(out)==k1_hap:
         return [overlap_portion,overlap_count]
     return 'FALSE'
+
 def simple_disdup_diploid_decide(k1,k2):
     #eg of k1='ab/ab'   ; eg of k2='bab/ab'
     k2_haps=k2.split('/')
@@ -858,6 +1190,7 @@ def simple_disdup_diploid_decide(k1,k2):
         else:
             out.append(simple_disdup_haploid_decide(k1_hap,x))
     return out
+
 def simple_disdup_haploid_decide(k1_hap,k2_hap):
     #eg of k1_hap='abcd'    ;   eg of k2_hap='babdcd'
     if not '^' in k2_hap:
@@ -903,6 +1236,7 @@ def simple_disdup_haploid_decide(k1_hap,k2_hap):
                         #insert_block=[[k2_hap_new[i],k2_hap_new[i+1],k2_hap_new[i+2]] for i in insert_pos]
                         return [dup_block_combined,insert_block]
     return 'FALSE'
+
 def simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length):
     #eg of info = ['a/a','/','chr1', 101553562, 101553905]
     #pick read around left breakpoints
@@ -911,21 +1245,23 @@ def simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length):
     #    block_length[chr(97+x)]=int(info[x+4])-int(info[x+3])
     bam_in_new_list=bam_in_decide(bam_in,sv_info)
     if bam_in_new_list=='': return [[],[],[]]
-    pacbio_read_info=[]
+    x=[]
     for bam_in_new in bam_in_new_list:
-        pacbio_read_info+=chop_pacbio_read_by_pos(bam_in_new, sv_info[0],int(sv_info[1])-flank_length,int(sv_info[1])+flank_length,flank_length)
-    pacbio_read_info=minimize_pacbio_read_list(pacbio_read_info)
-    return pacbio_read_info
+        x+=chop_pacbio_read_by_pos(bam_in_new, sv_info[0],int(sv_info[1])-flank_length,int(sv_info[1])+flank_length,flank_length)
+    x=minimize_pacbio_read_list(x)
+    return x
+
 def simple_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length):
     #eg of info = ['a/a','/','chr1', 101553562, 101553905]
     #eg of sv_info=['chr1', 101553562, 101553905]
     bam_in_new_list=bam_in_decide(bam_in,sv_info)
     if bam_in_new_list=='': return [[],[],[]]
-    pacbio_read_info=[]
+    x=[]
     for bam_in_new in bam_in_new_list:
-        pacbio_read_info+=chop_pacbio_read_by_pos(bam_in_new, sv_info[0],int(sv_info[1])-flank_length,int(sv_info[-1])+flank_length,flank_length)
-    pacbio_read_info=minimize_pacbio_read_list(pacbio_read_info)
-    return pacbio_read_info
+        x+=chop_pacbio_read_by_pos(bam_in_new, sv_info[0],int(sv_info[1])-flank_length,int(sv_info[-1])+flank_length,flank_length)
+    x=minimize_pacbio_read_list(x)
+    return x
+
 def del_inv_Valor(bam_in,ref,sv_info,out_figure_name):
     sv_block=[sv_info[0][0],sv_info[0][1],sv_info[-1][2]]
     flank_length=flank_length_calculate(sv_block)
@@ -943,11 +1279,12 @@ def del_inv_Valor(bam_in,ref,sv_info,out_figure_name):
                 alt_seq+=ref_seq[-flank_length:]
                 [window_size,window_size_qc]=window_size_refine(alt_seq)
                 if not window_size=='Error':
-                    all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_block,flank_length)
-                    if len(all_reads)>10:
+                    all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_block[:2]+[sv_block[1]+len(alt_seq)-2*flank_length],flank_length)
+                    if len(all_reads)>0:
+                        best_read_rec=''
                         for x in all_reads:
                             valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            if not 0 in valor_single_read_score:
                                 valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                 if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                         make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
@@ -962,6 +1299,32 @@ def del_inv_Valor(bam_in,ref,sv_info,out_figure_name):
             if 'del' in sub_sv_info:    valor_score_list+=simple_del_Valor(bam_in,ref,sub_sv_info[:-1],'.'.join(out_figure_name.split('.')[:-1])+'_'.join([str(i) for i in sub_sv_info])+'.'+out_figure_name.split('.')[-1])
             elif 'inv' in sub_sv_info:    valor_score_list+=simple_inv_Valor(bam_in,ref,sub_sv_info[:-1],'.'.join(out_figure_name.split('.')[:-1])+'_'.join([str(i) for i in sub_sv_info])+'.'+out_figure_name.split('.')[-1])
     return valor_score_list
+
+def bp_to_block_len(bp_info):
+    #eg of bp_info=['chr1',127906515, 127907283, 127907399]
+    out={}
+    for i in range(len(bp_info)-2):
+        out[chr(97+i)]=bp_info[i+2]-bp_info[i+1]
+    return out
+
+def dup_inv_ref_alt_bps_produce(sv_info,flank_length,alt_structure):
+    bp_info=sorted(sv_info[1:3]+[sv_info[4]])
+    block_len=bp_to_block_len([sv_info[0]]+bp_info)
+    ref_bps=[bp_info[0]-flank_length]+bp_info+[bp_info[-1]+flank_length]
+    alt_bps=ref_bps[:2]
+    for let_single in alt_structure:
+        alt_bps.append(alt_bps[-1]+block_len[let_single[0]])
+    alt_bps+=[alt_bps[-1]+flank_length]
+    return [ref_bps,alt_bps]
+
+def dup_inv_dup_bps_produce(sv_info,flank_length,alt_structure):
+    [ref_bps,alt_bps]=dup_inv_ref_alt_bps_produce(sv_info,flank_length,alt_structure)
+    alt_bps_new=[i-alt_bps[0] for i in alt_bps]
+    if len(alt_structure)==2:
+        return [alt_bps_new[1:3],alt_bps_new[2:4]]
+    else:
+        return [alt_bps_new[1:3],alt_bps_new[3:5]]
+
 def dup_inv_ValoR(bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 114103333, 114103408, 'chr1', 114111746]
     sv_info[1:3]=[int(i) for i in sv_info[1:3]]
@@ -969,77 +1332,83 @@ def dup_inv_ValoR(bam_in,ref,sv_info,out_figure_name):
     ins_point=[sv_info[3],int(sv_info[4])]
     flank_length=flank_length_calculate(dup_block)
     valor_score_list=[]
-    best_read_rec=''
-    bp_info=sorted(sv_info[1:3]+[sv_info[4]])
-    run_flag=0
-    if sv_info[0]==sv_info[3] and max(bp_info)-min(bp_info)<default_max_sv_test: #try to test on the whole region
-        ref_seq=ref_seq_readin(ref,sv_info[0],min(bp_info)-flank_length,max(bp_info)+flank_length)
-        [window_size,window_size_qc]=window_size_refine(ref_seq)
-        if not window_size=='Error':
-            run_flag+=1
-            ref_structure=[i for i in 'ab']
-            if sv_info[4]>sv_info[2]:           alt_structure=['a','b','a^']
-            elif sv_info[4]<sv_info[1]:         alt_structure=['b^','a','b']
-            else:                               alt_structure=['a','a^']
-            all_reads=simple_chop_pacbio_read_simple_short(bam_in,[sv_info[0]]+bp_info+[bp_info[-1]+sv_info[2]-sv_info[1]],flank_length)
-            if len(all_reads)>0:
-                alt_seq=ref_seq_readin(ref,sv_info[0],min(bp_info)-flank_length,min(bp_info))
-                a_seq=ref_seq_readin(ref,sv_info[0],bp_info[0],bp_info[1])
-                b_seq=ref_seq_readin(ref,sv_info[0],bp_info[1],bp_info[2])
-                for x in alt_structure:
-                    if x=='a':  alt_seq+=a_seq
-                    elif x=='a^':   alt_seq+=reverse(complementary(a_seq))
-                    elif x=='b':    alt_seq+=b_seq
-                    elif x=='b^':   alt_seq+=reverse(complementary(b_seq))
-                alt_seq+=ref_seq_readin(ref,sv_info[0],max(bp_info),max(bp_info)+flank_length)
-                [window_size,window_size_qc]=window_size_refine(alt_seq)
+    if sv_info[0]==sv_info[3]:  #dup inv on the same chromosome
+        bp_info=sorted(sv_info[1:3]+[sv_info[4]])
+        run_flag=0
+        if sv_info[0]==sv_info[3] and max(bp_info)-min(bp_info)<default_max_sv_test: #try to test on the whole region
+            ref_seq=ref_seq_readin(ref,sv_info[0],min(bp_info)-flank_length,max(bp_info)+flank_length)
+            [window_size,window_size_qc]=window_size_refine(ref_seq)
+            if not window_size=='Error':
+                run_flag+=1
+                ref_structure=[i for i in 'ab']
+                if sv_info[4]>sv_info[2]:           alt_structure=['a','b','a^']
+                elif sv_info[4]<sv_info[1]:         alt_structure=['b^','a','b']
+                else:                               alt_structure=['a','a^']
+                #[ref_bps,alt_bps]=dup_inv_ref_alt_bps_produce(sv_info,flank_length,alt_structure)
+                #dup_block_bps=dup_inv_dup_bps_produce(sv_info,flank_length,alt_structure)
+                all_reads=simple_chop_pacbio_read_simple_short(bam_in,[sv_info[0]]+bp_info+[bp_info[-1]+sv_info[2]-sv_info[1]],flank_length)
+                if len(all_reads)>0:
+                    alt_seq=ref_seq_readin(ref,sv_info[0],min(bp_info)-flank_length,min(bp_info))
+                    a_seq=ref_seq_readin(ref,sv_info[0],bp_info[0],bp_info[1])
+                    b_seq=ref_seq_readin(ref,sv_info[0],bp_info[1],bp_info[2])
+                    for x in alt_structure:
+                        if x=='a':  alt_seq+=a_seq
+                        elif x=='a^':   alt_seq+=reverse(complementary(a_seq))
+                        elif x=='b':    alt_seq+=b_seq
+                        elif x=='b^':   alt_seq+=reverse(complementary(b_seq))
+                    alt_seq+=ref_seq_readin(ref,sv_info[0],max(bp_info),max(bp_info)+flank_length)
+                    [window_size,window_size_qc]=window_size_refine(alt_seq)
+                    if not window_size=='Error':
+                        best_read_rec=''
+                        for x in all_reads:
+                            valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b_redefine_diagnal(ref_seq,alt_seq,x,window_size)
+                            if not 0 in valor_single_read_score and not math.isnan(valor_single_read_score[0]) and not math.isnan(valor_single_read_score[1]):
+                                valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
+                                if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
+                        make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+        if run_flag==0:
+            if max(bp_info)-min(bp_info)<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
+                ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
+                [window_size,window_size_qc]=window_size_refine(ref_seq)
                 if not window_size=='Error':
-                    for x in all_reads:
-                        valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b(ref_seq,alt_seq,x,window_size)
-                        if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
-                            valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
-                            if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
-                    make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
-    if run_flag==0:
-        if max(bp_info)-min(bp_info)<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
-            ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
-            [window_size,window_size_qc]=window_size_refine(ref_seq)
-            if not window_size=='Error':
-                all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-                if len(all_reads)>0:
-                    alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[1],dup_block[2])))+ref_seq[-flank_length:]
-                    [window_size,window_size_qc]=window_size_refine(alt_seq)
-                    if not window_size=='Error':
-                        for x in all_reads:
-                            valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
-                                valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
-                                if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
-                        make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
-        else:
-            ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
-            [window_size,window_size_qc]=window_size_refine(ref_seq)
-            if not window_size=='Error':
-                all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-                if len(all_reads)>0:
-                    alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[2]-flank_length,dup_block[2])))
-                    [window_size,window_size_qc]=window_size_refine(alt_seq)
-                    if not window_size=='Error':
-                        for x in all_reads:
-                            valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
-                                valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
-                                if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
-                        make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                    all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
+                    if len(all_reads)>0:
+                        alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[1],dup_block[2])))+ref_seq[-flank_length:]
+                        [window_size,window_size_qc]=window_size_refine(alt_seq)
+                        if not window_size=='Error':
+                            best_read_rec=''
+                            for x in all_reads:
+                                valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
+                                if not 0 in valor_single_read_score and not math.isnan(valor_single_read_score[0]) and not math.isnan(valor_single_read_score[1]):
+                                    valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
+                                    if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
+                            make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+            else:
+                ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
+                [window_size,window_size_qc]=window_size_refine(ref_seq)
+                if not window_size=='Error':
+                    all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
+                    if len(all_reads)>0:
+                        alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[2]-flank_length,dup_block[2])))
+                        [window_size,window_size_qc]=window_size_refine(alt_seq)
+                        if not window_size=='Error':
+                            best_read_rec=''
+                            for x in all_reads:
+                                valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
+                                if not 0 in valor_single_read_score and not math.isnan(valor_single_read_score[0]) and not math.isnan(valor_single_read_score[1]):
+                                    valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
+                                    if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
+                            make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def CANNOT_CLASSIFY_ValoR(bam_in,ref,sv_info,out_figure_name):
+    #eg of sv_info=['ab_ab', 'b_b^', 'chr7', '70955990', '70961199', '70973901']
     ref_sv=sv_info[0].split('_')
     alt_sv=list_unify([i for i in sv_info[1].split('_') if not i in ref_sv])
     chromos=chromos_readin(ref)
     bp_info=block_subsplot(sv_info[2:],chromos)
     flank_length=max([flank_length_calculate(i) for i in bp_info])
     valor_score_list=[]
-    best_read_rec=''
     run_flag=0
     if len(bp_info)==1: #inter-chromosome event not considered here
         if bp_info[0][-1]-bp_info[0][1]<default_max_sv_test:
@@ -1048,7 +1417,7 @@ def CANNOT_CLASSIFY_ValoR(bam_in,ref,sv_info,out_figure_name):
             if not window_size=='Error':
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,bp_info[0],flank_length)
                 bp_let_hash=bp_to_chr_hash(bp_info[0],chromos,flank_length)
-                if len(all_reads)>10:
+                if len(all_reads)>5:
                     run_flag+=1
                     bp_let_seq={}
                     for i in bp_let_hash.keys():
@@ -1061,10 +1430,11 @@ def CANNOT_CLASSIFY_ValoR(bam_in,ref,sv_info,out_figure_name):
                         alt_seq+=ref_seq[-flank_length:]
                         [window_size,window_size_qc]=window_size_refine(alt_seq)
                         if not window_size=='Error':
+                            best_read_rec=''
                             for x in all_reads:
                                 if not max([alt_allele.count(i) for i in alt_allele]+[0])>1:    valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                                else:                                                       valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b(ref_seq,alt_seq,x,window_size)
-                                if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                                else:                                                           valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b_redefine_diagnal(ref_seq,alt_seq,x,window_size)
+                                if not 0 in valor_single_read_score:
                                     valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                     if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                             make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,'.'.join(out_figure_name.split('.')[:-1]+[ref_sv[0]+'.vs.'+alt_allele,out_figure_name.split('.')[-1]]))
@@ -1090,14 +1460,15 @@ def CANNOT_CLASSIFY_ValoR(bam_in,ref,sv_info,out_figure_name):
                             if len(all_reads_a)>0:
                                 for x in all_reads_a:
                                     valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq_a,alt_seq,x,window_size)
-                                    if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                                    if not 0 in valor_single_read_score:
                                         valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                             #if len(all_reads_b)>0:
                             #    for x in all_reads_a:
                             #        valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq_a,alt_seq,x,window_size)
-                            #        if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            #        if not valor_single_read_score==[0,0] and not valor_single_read_score[0]==0:
                             #            valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
     return valor_score_list
+
 def long_del_inv(bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=[['chr19', 46275941, 46314150, 'del'], ['chr19', 46314150, 46314312, 'inv']]
     valor_score_list=[]
@@ -1111,13 +1482,15 @@ def long_del_inv(bam_in,ref,sv_info,out_figure_name):
         if not window_size=='Error':
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info[0],flank_length)
             if len(all_reads)>0:
+                best_read_rec=''
                 for x in all_reads:
                     valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                    if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                    if not 0 in valor_single_read_score:
                         valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                         if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                 make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def simple_del_Valor(bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
@@ -1130,9 +1503,10 @@ def simple_del_Valor(bam_in,ref,sv_info,out_figure_name):
             [window_size,window_size_qc]=window_size_refine(ref_seq)
             if not window_size=='Error':
                 alt_seq=ref_seq[:flank_length]+ref_seq[-flank_length:]
+                best_read_rec=''
                 for x in all_reads:
                     valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                    if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                    if not 0 in valor_single_read_score:
                         valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                         if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                 make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
@@ -1146,13 +1520,15 @@ def simple_del_Valor(bam_in,ref,sv_info,out_figure_name):
                 alt_seq=ref_seq_readin(ref,sv_info[0],sv_info[1]-flank_length,sv_info[1])+ref_seq_readin(ref,sv_info[0],sv_info[2],sv_info[2]+flank_length)
                 [window_size,window_size_qc]=window_size_refine(alt_seq)
                 if not window_size=='Error':
+                    best_read_rec=''
                     for x in all_reads:
                         valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                        if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                        if not 0 in valor_single_read_score:
                             valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                             if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                     make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def simple_disdup_Valor(bam_in,ref,sv_info,out_figure_name):
     sv_info[1:3]=[int(i) for i in sv_info[1:3]]
     dup_block=sv_info[:3]
@@ -1181,9 +1557,10 @@ def simple_disdup_Valor(bam_in,ref,sv_info,out_figure_name):
                 alt_seq+=ref_seq_readin(ref,sv_info[0],max(bp_info),max(bp_info)+flank_length)
                 [window_size,window_size_qc]=window_size_refine(alt_seq)
                 if not window_size=='Error':
+                    best_read_rec=''
                     for x in all_reads:
-                        valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b(ref_seq,alt_seq,x,window_size)
-                        if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                        valor_single_read_score=calcu_valor_single_read_score_directed_dis_m1b_redefine_diagnal(ref_seq,alt_seq,x,window_size)
+                        if not 0 in valor_single_read_score:
                             valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                             if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                     make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
@@ -1197,9 +1574,10 @@ def simple_disdup_Valor(bam_in,ref,sv_info,out_figure_name):
                     alt_seq=ref_seq[:flank_length]+ref_seq_readin(ref,dup_block[0],dup_block[1],dup_block[2])+ref_seq[-flank_length:]
                     [window_size,window_size_qc]=window_size_refine(alt_seq)
                     if not window_size=='Error':
+                        best_read_rec=''
                         for x in all_reads:
                             valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            if not 0 in valor_single_read_score:
                                 valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                 if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                         make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
@@ -1212,13 +1590,15 @@ def simple_disdup_Valor(bam_in,ref,sv_info,out_figure_name):
                     alt_seq=ref_seq[:flank_length]+ref_seq_readin(ref,dup_block[0],dup_block[1],dup_block[1]+flank_length)
                     [window_size,window_size_qc]=window_size_refine(alt_seq)
                     if not window_size=='Error':
+                        best_read_rec=''
                         for x in all_reads:
                             valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            if not 0 in valor_single_read_score:
                                 valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                 if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                         make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def simple_inv_Valor(bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
@@ -1233,9 +1613,10 @@ def simple_inv_Valor(bam_in,ref,sv_info,out_figure_name):
             if not window_size=='Error':
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
                 if len(all_reads)>10:
+                    best_read_rec=''
                     for x in all_reads:
                         valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                        if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                        if not 0 in valor_single_read_score:
                             valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                             if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                     make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
@@ -1248,13 +1629,15 @@ def simple_inv_Valor(bam_in,ref,sv_info,out_figure_name):
         if not window_size=='Error':
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
             if len(all_reads)>0:
+                best_read_rec=''
                 for x in all_reads:
                     valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                    if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                    if not 0 in valor_single_read_score:
                         valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                         if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                 make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
     #eg of ins_pos='chr1_83144055'
     #eg of bam_in='/nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
@@ -1272,13 +1655,13 @@ def simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
         [window_size,window_size_qc]=window_size_refine(ref_seq)
         if not window_size=='Error':
             alt_seq=ref_seq[:flank_length]+ins_seq_2+ref_seq[flank_length:(2*flank_length)]
-            [window_size,window_size_qc]=window_size_refine(alt_seq)
             if not window_size=='Error':
+                best_read_rec=''
                 if len(all_reads)>10:
                     for x in all_reads:
                         if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
                             valor_single_read_score=calcu_valor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            if not 0 in valor_single_read_score:
                                 valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                 if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
                 else:
@@ -1286,12 +1669,13 @@ def simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
                     for x in all_reads:
                         if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
                             valor_single_read_score=calcu_valor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                            if not valor_single_read_score==[1,1] and not valor_single_read_score[0]==0:
+                            if not 0 in valor_single_read_score:
                                 valor_score_list.append(1-float(valor_single_read_score[1])/float(valor_single_read_score[0]))
                                 if valor_score_list[-1]==max(valor_score_list):best_read_rec=x
-                if ins_seq_2.count('N')==len(ins_seq_2):        make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
+                if ins_seq_2.count('X')==len(ins_seq_2):        make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
                 else:            make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return valor_score_list
+
 def subkeys(key, nth_base, inversions):
     subkeys_info = []
     key=key_modify(key)
@@ -1312,14 +1696,16 @@ def subkeys(key, nth_base, inversions):
         for i in range(len(subkeys_info)):
             subkeys_info.append("".join([invert_base[c] for c in reversed(subkeys_info[i])]))
     return subkeys_info
+
 def svtype_extract(pin):
     svtype=''
     for x in pin[7].split(';'):
         if 'SVTYPE' in x:
             svtype=x.split('=')[1]
     if svtype=='':
-        svtype=pin[4]
+        svtype=pin[4].replace('<','').replace('>','')
     return svtype
+
 def sv_len_extract(pin):
     svtype=''
     for x in pin[7].split(';'):
@@ -1328,18 +1714,30 @@ def sv_len_extract(pin):
     if svtype=='':
         svtype=0
     return svtype
+
+def sv_seq_extract(pin):
+    seq=''
+    for x in pin[7].split(';'):
+        if x[:4]=='SEQ=':
+            seq=x.split('=')[1]
+    return seq
+
 def sv_insert_point_define(pin):
     svtype=[0,0]
     for x in pin[7].split(';'):
         if 'insert_point=' in x:
             svtype=x.split('=')[1].split(':')
+    if svtype==[0,0]:
+        sv_info=pin[:2]
     return svtype
+
 def chr_start_end_extract(pin):
     out=[pin[0],int(pin[1])]
     for x in pin[7].split(';'):
-        if 'END=' in x and x.split('=')[0]=='END':
+        if x[:4]=='END=' and x.split('=')[0]=='END':
             out.append(int(x.split('=')[1]))
     return out
+
 def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
     #reverse=='TRUE': return rev-comp-seq   ; if not specified, default as 'FALSE'
     #else: return original seq
@@ -1355,6 +1753,7 @@ def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
         return seq
     else:
         return reverse(complementary(seq))
+
 def result_organize_ins(info_list):
     #eg of info_list=[key_event,valor_score_event]=['chr2_82961201', [-9.228366096827557, -106.46718851834126, -667.0858781654538, -38.56838396416415, -64.87185751169045, -147.77261544769615, -28.29536680099185, -25.378519434143666, -17.23542013374081, -113.00564782332029, -64.53043553409316]]
     if len(info_list[1])>0:
@@ -1368,12 +1767,14 @@ def result_organize_ins(info_list):
         return [info_list[0]]+[qual_value,geno_value,','.join([str(round(float(i),2)) for i in info_list[1]])]
     else:
         return [info_list[0]]+['NA' for i in range(3)]
+
 def vcf_rec_hash_modify(vcf_rec_hash):
     out={}
     for k1 in vcf_rec_hash.keys():
         if not vcf_rec_hash[k1] in out.keys():  out[vcf_rec_hash[k1]]=[]
         out[vcf_rec_hash[k1]].append(k1)
     return out
+
 def vcf_valor_modify(vcf_input,vcf_rec_hash_new):
     valor_input=vcf_input+'.valor'
     valor_rec={}
@@ -1403,6 +1804,7 @@ def vcf_valor_modify(vcf_input,vcf_rec_hash_new):
         if k1 in keep_rec:
             print>>fo, '\t'.join([str(i) for i in vcf_info_hash[k1]])
     fo.close()
+
 def window_size_refine(seq2,region_QC_Cff=0.4):
     window_size=10
     if not seq2.count('N')+seq2.count('n')>100:
@@ -1419,14 +1821,23 @@ def window_size_refine(seq2,region_QC_Cff=0.4):
             return [window_size,region_QC]
         else:   return ['Error','Error']
     else:       return ['Error','Error']
+
+def write_dotdata_to_file(file_out,dotdata_list):
+    fo=open(file_out,'w')
+    for k1 in dotdata_list:
+        print >>fo, ' '.join([str(i) for i in k1])
+    fo.close()
+
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
     print >>fo, '\t'.join(['chr','start','end','SV_description','VaLoR_quality_score','VaLoR_genotype_score','other'])
     fo.close()
+
 def write_output_main(out_name,out_list):
     fo=open(out_name,'a')
     print >>fo, '\t'.join([str(i) for i in out_list])
     fo.close()
+
 def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
     #reverse=='TRUE': return rev-comp-seq    ; if not specified, default as 'FALSE'
     #else: return original seq
@@ -1443,12 +1854,14 @@ def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
         return seq
     else:
         return reverse(complementary(seq))
+
 def unify_list(list):
     out=[]
     for x in list:
         if not x in out:
             out.append(x)
     return out
+
 def x_to_x_modify_new(x,dup_block_combined):
     x_modify=[[i] for i in list(x)]
     block_rec=-1
@@ -1459,6 +1872,7 @@ def x_to_x_modify_new(x,dup_block_combined):
     x_modify_new=[]
     for y in x_modify:  x_modify_new+=y
     return x_modify_new
+
 def X_means_cluster(data_list):
     temp_result=[i for i in k_means_cluster(data_list) if not i==[[],[]]]
     if temp_result==[data_list]:
@@ -1468,6 +1882,7 @@ def X_means_cluster(data_list):
         for i in temp_result:
             out+=X_means_cluster(i)
         return out
+
 def X_means_cluster_reformat(data_list):
     out=X_means_cluster(data_list)
     out2=[]
@@ -1475,60 +1890,26 @@ def X_means_cluster_reformat(data_list):
         out2.append([out[2*y],out[2*y+1]])
     return out2
 
-def calcu_eu_dis_svelter(global_list,km):
-    [lenght_cff,dots_num_cff,clu_dis_cff, point_dis_cff, simple_dis_cff, invert_base, dict_opts, out_path, out_file_Cannot_Validate, sample_name, start, delta, bam_in, ref, chromos, region_QC_Cff, min_length, min_read_compare, case_number, qc_file_name]=global_list
-    [k1,k2,k3]=km
-    simple_del_test=simple_del_diploid_decide(k1,k2)
-    out_hash={}
-    if not 'FALSE' in simple_del_test:
-        #eg of [k1,k2,k3]=['a/a','/a',['chr1', 909055, 909641]]
-        chr_let_hash=bp_to_chr_hash(k3,chromos)
-        del_block=[let_to_block_info(i,chr_let_hash,chromos) for i in simple_del_test if not i=='NA']
-        if len(unify_list(del_block))==1: #homo- event
-            SV_rec=0
-            for sv_block in del_block[0]:
-                SV_rec+=1
-                sv_info=[sv_block[0]]+[int(i) for i in sv_block[1:]]
-                valor_score_event=simple_del_Valor(bam_in,ref,sv_info,out_path+sample_name+'.'+':'.join(k3)+'.DEL.png')
-                out_hash[SV_rec]=result_organize_ins(valor_score_event)
-        else:
-            SV_rec=0
-            for x in del_block:
-                for sv_block in x:
-                    SV_rec+=1
-                    sv_info=[sv_block[0]]+[int(i) for i in sv_block[1:]]
-                    valor_score_event=simple_del_Valor(bam_in,ref,sv_info,out_path+sample_name+'.'+':'.join(k3)+'.DEL.png')
-                    out_hash[SV_rec]=result_organize_ins(valor_score_event)
+def dup_let_recombind(vec_in):
+    if vec_in==[]:
+        return []
     else:
-        simple_inv_test=simple_inv_diploid_decide(k1,k2)
-        if not 'FALSE' in simple_inv_test:
-            #eg of km=['a/a', 'a^/a', ['chr1', '236755681', '237282111']]
-            chr_let_hash=bp_to_chr_hash(k3,chromos)
-            inv_block=[let_to_block_info(i,chr_let_hash,chromos) for i in simple_inv_test if not i=='NA']
-            SV_rec=0
-            for x in unify_list(inv_block):
-                for sv_block in x:
-                    SV_rec+=1
-                    sv_info=[sv_block[0]]+[int(i) for i in sv_block[1:]]
-                    valor_score_event=simple_inv_Valor(bam_in,ref,sv_info,out_path+sample_name+':'.join(k3)+'.INV.png')
-                    out_hash[SV_rec]=result_organize_ins(['_'.join([k1,k2]+k3),valor_score_event])
-        else: 
-            simple_disdup_test=simple_disdup_diploid_decide(k1,k2)
-            if not 'FALSE' in simple_disdup_test:
-                SV_rec=0
-                #eg of km=['abc/abc', 'abc/babc',['chr2', '65591889', '65592631', '65593270', '65594027']]
-                chr_let_hash=bp_to_chr_hash(k3,chromos)
-                dup_block=[ [let_to_block_info(j[1],chr_let_hash,chromos),[chr_let_hash[j[0]][0],chr_let_hash[j[0]][2]] ]    for j in i[1] for i in simple_disdup_test if not i=='NA']
-                for x in dup_block:
-                    for y in x[0]:
-                        SV_rec+=1
-                        dup_info=y+x[1]
-                        valor_score_event=simple_disdup_Valor(bam_in,ref,dup_info,out_path+sample_name+':'.join([str(i) for i in dup_info])+'.DISDUP.png')
-                        out_hash[SV_rec]=result_organize_ins(valor_score_event)
-    return out_hash
-
-
-
-
-
-
+        vec2=sorted(vec_in)
+        vec=[[vec2[0]]]
+        for ka in vec2[1:]:
+            if ord(ka)-ord(vec[-1][-1])==1:
+                vec[-1].append(ka)
+            else:
+                vec.append([ka])
+        vec3=[]
+        for ka in vec:
+            if len(ka)==1:
+                vec3.append(ka)
+            else:
+                for kb in range(2,len(ka)+1):
+                    for kc in ka[:(1-kb)]:
+                        vec3.append([])
+                        for kd in range(kb):
+                            vec3[-1].append(ka[ka.index(kc)+kd])                
+        vec4=[''.join(i) for i in vec3]
+        return vec4
