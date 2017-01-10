@@ -38,53 +38,69 @@ else:
 	from sklearn.preprocessing import StandardScaler
 	function_name=sys.argv[1]
 	global dict_opts
-	if function_name=='MELT':
-		def melt_info_readin(melt_input_prefix,out_path,sample_name,bam_in,ref):
-			#eg of melt_input_prefix='/scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00512.CHS.melt.LINE1.pacbio.20160504.sites'
-			#eg of out_path='/scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT'
-			#eg of sample_name='HG00512'
-			out_path=path_modify(out_path)
-			path_mkdir(out_path)
-			vcf_name=melt_input_prefix+'.vcf'
-			seq_name=melt_input_prefix+'.fa'
-			fin=open(vcf_name)
-			out=[]
-			write_output_initiate(melt_input_prefix+'.valor')
-			for line in fin:
-				pin=line.strip().split()
-				if not pin[0][0]=='#':
-					key_event='_'.join(pin[:2])
-					ffa=os.popen(r'''samtools faidx %s %s'''%(seq_name,key_event))
-					ins_seq=''
-					header=ffa.readline().strip().split()
-					for pfa in ffa:
-						ins_seq+=pfa.strip()
-					ffa.close()
-					if ins_seq=='':	ins_seq=''.join(['X' for i in range(INS_length_detect(pin))])
-					if not ins_seq=='' and 'INS' in pin[3]:
-						POLARITY=polarity_detect(pin)
-						valor_score_event=simple_ins_Valor(bam_in,ref,key_event,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
-						write_output_main(melt_input_prefix+'.valor',result_organize_ins([key_event,valor_score_event]))
-			fin.close()
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00512.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00512/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00513.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00513/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00514.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00514/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00514.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00731.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00731/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00731.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00732.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00732/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00732.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/HG00733.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/HG00733/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00733.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/NA19238.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/NA19238/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19238.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/NA19239.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/NA19239/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19239.XXX.bam'
-		#command='VaLoR MELT --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/NA19240.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT_with_seq/VaLoR_Vali_MELT/NA19240/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19240.XXX.bam'
-		from valor_vali.Simple_function import *
-		opts,args=getopt.getopt(sys.argv[2:],'i:',['sv-input-prefix=','reference=','pacbio-input=','output-path=','sv-type=','size-cff='])
-		dict_opts=dict(opts)
-		out_path=dict_opts['--output-path']
-		path_mkdir(out_path)
-		melt_input_prefix=dict_opts['--sv-input-prefix']
-		sample_name=melt_input_prefix.split('/')[-1].split('.')[0]
-		bam_in=dict_opts['--pacbio-input']
-		ref=dict_opts['--reference']
-		melt_info_readin(melt_input_prefix,out_path,sample_name,bam_in,ref)
+	if function_name=='ins':
+		if len(sys.argv)==2:
+			import valor_vali.prep as prep
+			prep.readme_melt()
+		else:
+			from valor_vali.Simple_function import *
+			def melt_info_readin(melt_input_prefix,out_path,sample_name,bam_in,ref):
+				#eg of melt_input_prefix='/scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00512.CHS.melt.LINE1.pacbio.20160504.sites'
+				#eg of out_path='/scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT'
+				#eg of sample_name='HG00512'
+				out_path=path_modify(out_path)
+				path_mkdir(out_path)
+				vcf_name=melt_input_prefix+'.vcf'
+				seq_name=melt_input_prefix+'.fa'
+				fin=open(vcf_name)
+				out=[]
+				write_output_initiate(melt_input_prefix+'.valor')
+				for line in fin:
+					pin=line.strip().split()
+					if not pin[0][0]=='#':
+						key_event='_'.join(pin[:2])
+						ffa=os.popen(r'''samtools faidx %s %s'''%(seq_name,key_event))
+						ins_seq=''
+						header=ffa.readline().strip().split()
+						for pfa in ffa:
+							ins_seq+=pfa.strip()
+						ffa.close()
+						if ins_seq=='':	ins_seq=''.join(['X' for i in range(INS_length_detect(pin))])
+						if not ins_seq=='' and 'INS' in pin[3]:
+							POLARITY=polarity_detect(pin)
+							ins_seq=ins_seq.replace('N','X')
+							valor_score_event=valor_simple_ins_Valor(bam_in,ref,key_event,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
+							write_output_main(melt_input_prefix+'.valor',result_organize_ins([key_event,valor_score_event]))
+				fin.close()
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00512.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00512/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00513.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00513/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00514.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00514/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00514.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00731.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00731/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00731.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00732.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00732/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00732.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/HG00733.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/HG00733/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00733.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/NA19238.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/NA19238/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19238.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/NA19239.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/NA19239/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19239.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/NA19240.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_with_seq/VaLoR_Vali_MELT/NA19240/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19240.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00512.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00512/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00513.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00513/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00514.CHS.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00514/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00514.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00731.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00731/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00731.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00732.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00732/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00732.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/HG00733.PUR.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/HG00733/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00733.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/NA19238.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/NA19238/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19238.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/NA19239.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/NA19239/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19239.XXX.bam'
+			#command='valor ins --sv-input-prefix /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/NA19240.YRI.melt.LINE1.pacbio.20160504.sites --output-path /scratch/remills_flux/xuefzhao/VaLoR/MELT/MELT_without_seq/VaLoR_Vali_MELT/NA19240/		--reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa		--pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/NA19240.XXX.bam'
+			def main():
+				opts,args=getopt.getopt(sys.argv[2:],'i:',['sv-input-prefix=','reference=','pacbio-input=','output-path=','sv-type=','size-cff='])
+				dict_opts=dict(opts)
+				out_path=dict_opts['--output-path']
+				path_mkdir(out_path)
+				melt_input_prefix=dict_opts['--sv-input-prefix']
+				sample_name=melt_input_prefix.split('/')[-1].split('.')[0]
+				bam_in=dict_opts['--pacbio-input']
+				ref=dict_opts['--reference']
+				melt_info_readin(melt_input_prefix,out_path,sample_name,bam_in,ref)
+			main()
 	elif function_name=='bed':
 		if len(sys.argv)==2:
 			import valor_vali.prep as prep
@@ -100,18 +116,16 @@ else:
 				for line in fin:
 					pin=line.strip().split()
 					#test.append(pin)
-					if 'DUP' in pin[-1]:
-						if not '_' in pin[-1]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/aa'])
-						else:					out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/'.join([ ''.join(['a' for i in range(int(pin[-1].split('_')[1].replace('<CN','').replace('>','')))]),''.join(['a' for i in range(int(pin[-1].split('_')[2].replace('<CN','').replace('>','')))])])])
-					elif 'DEL' in pin[-1]:
-						if not '_' in pin[-1]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/a'])
-						else:					out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/'.join([	['a',''][int(pin[-1].split('_')[1])],	['a',''][int(pin[-1].split('_')[2])]])])	
-					elif 'INV' in pin[-1]:
-						if not '_' in pin[-1]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/a^'])
-						else:					out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/'.join([	['a','a^'][int(pin[-1].split('_')[1])],	['a','a^'][int(pin[-1].split('_')[2])]])])	
-					elif 'INS'  in pin[-1]:
-						if not '_' in pin[-1]:	continue
-						else:					out.append([pin[0],int(pin[1]),int(pin[-1].split('_')[1]),'INS'])
+					if 'DUP' in pin[3]:
+						if not '_' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/aa'])
+						else:					out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/'.join([ ''.join(['a' for i in range(int(pin[3].split('_')[1].replace('<CN','').replace('>','')))]),''.join(['a' for i in range(int(pin[3].split('_')[2].replace('<CN','').replace('>','')))])])])
+					elif 'DEL' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/a'])
+					elif 'INV' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/a^'])
+					elif 'INS'  in pin[3]:
+						if len(pin)==5:		out.append([pin[0],int(pin[1]),pin[4],'INS'])
+						else:				
+							if not '_' in pin[3]:	continue
+							else:					out.append([pin[0],int(pin[1]),int(pin[3].split('_')[1]),'INS'])
 				return out
 			#command='valor bed --sv-input /scratch/remills_flux/xuefzhao/VaLoR/1000genome_vcf/HG00513.ALL.wgs.integrated_sv_map_v2.20130502.svs.genotypes.hg38 --output-path /scratch/remills_flux/xuefzhao/VaLoR/1000genome_vcf/VaLoR_Vali_HG00513/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
 			from valor_vali.Simple_function import *
@@ -125,13 +139,13 @@ else:
 			for x in bed_info:
 				if x[-1] in ['a/','/a','/','DEL']:
 					key_event=':'.join([str(i) for i in x[:-2]]+['DEL'])
-					valor_score_event=simple_del_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.DEL.'+key_event+'.png')
+					valor_score_event=valor_simple_del_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.DEL.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
 					print valor_result
 				elif x[-1] in ['a/a^','a^/a','a^/a^','INV']:	
 					key_event=':'.join([str(i) for i in x[:-2]]+['INV'])
-					valor_score_event=simple_inv_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.INV.'+key_event+'.png')
+					valor_score_event=valor_simple_inv_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.INV.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
 					print valor_result
@@ -139,8 +153,15 @@ else:
 					key_event=':'.join([str(i) for i in x[:-2]+['INS']])
 					ins_pos='_'.join([str(i) for i in x[:2]])
 					POLARITY='+'
-					ins_seq=''.join(['X' for i in range(x[2])])
-					valor_score_event=simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
+					if type(x[2])==type(2):					ins_seq=''.join(['X' for i in range(x[2])])
+					else:									ins_seq=x[2]
+					valor_score_event=valor_simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
+					valor_result=result_organize_ins([key_event,valor_score_event])
+					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
+					print valor_result
+				elif x[-1] in ['a/aa','aa/a','aa/aa','DUP','TANDUP']:
+					key_event=':'.join([str(i) for i in x[:-2]]+['TANDUP'])
+					valor_score_event=valor_simple_tandup_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.TANDUP.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
 					print valor_result
@@ -280,7 +301,7 @@ else:
 							print y
 							#eg of y=['chr1', '91666237', '91667096']
 							key_event=':'.join([str(i) for i in y]+['DEL'])
-							valor_score_event=simple_del_Valor(bam_in,ref,y,out_path+sample_name+'.DEL.'+key_event+'.png')
+							valor_score_event=valor_simple_del_Valor(bam_in,ref,y,out_path+sample_name+'.DEL.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='INV':
 					for y in vcf_list[x]:
@@ -288,7 +309,7 @@ else:
 							print y
 							#eg of y=['chr1', '91666237', '91667096']
 							key_event=':'.join([str(i) for i in y]+['INV'])
-							valor_score_event=simple_inv_Valor(bam_in,ref,y,out_path+sample_name+'.INV.'+key_event+'.png')
+							valor_score_event=valor_simple_inv_Valor(bam_in,ref,y,out_path+sample_name+'.INV.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='INS':
 					for y in vcf_list[x]:
@@ -299,21 +320,21 @@ else:
 							POLARITY='+'
 							if len(y)==4:			ins_seq=y[-1]
 							else:					ins_seq=''.join(['X' for i in range(y[2])])
-							valor_score_event=simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
+							valor_score_event=valor_simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='DISDUP':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
 							print y
 							key_event=':'.join([str(i) for i in y+['DISDUP']])
-							valor_score_event=simple_disdup_Valor(bam_in,ref,y,out_path+sample_name+'.DISDUP.'+key_event+'.png')
+							valor_score_event=valor_simple_disdup_Valor(bam_in,ref,y,out_path+sample_name+'.DISDUP.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='DEL_INV':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
 							print y
 							key_event=':'.join(['_'.join([str(i) for i in j]) for j in y]+['DEL_INV'])
-							valor_score_event=del_inv_Valor(bam_in,ref,y,out_path+sample_name+'.DEL_INV.'+key_event+'.png')
+							valor_score_event=valor_del_inv_Valor(bam_in,ref,y,out_path+sample_name+'.DEL_INV.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='DUP_INV':
 					for y in vcf_list[x]:
@@ -321,7 +342,7 @@ else:
 							print y
 							#y=['chr7', '121522364', '121522527', 'chr7', '121522527']
 							key_event=':'.join([str(i) for i in y+['DUP_INV']])
-							valor_score_event=dup_inv_ValoR(bam_in,ref,y,out_path+sample_name+'.DUP_INV.'+key_event+'.png')
+							valor_score_event=valor_dup_inv_ValoR(bam_in,ref,y,out_path+sample_name+'.DUP_INV.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='Other':
 					for y in vcf_list[x]:
@@ -329,7 +350,7 @@ else:
 							print y
 							#eg of y=['ab_ab', 'ab_bb^', 'chr15', '95148444', '95149304', '95149530']
 							key_event=':'.join([str(i) for i in y+['CANNOT_CLASSIFY']])
-							valor_score_event=CANNOT_CLASSIFY_ValoR(bam_in,ref,y,out_path+sample_name+'.CANNOT_CLASSIFY.'+key_event+'.png')
+							valor_score_event=valor_CANNOT_CLASSIFY_ValoR(bam_in,ref,y,out_path+sample_name+'.CANNOT_CLASSIFY.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				else:
 					print x
