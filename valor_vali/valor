@@ -142,13 +142,13 @@ else:
 					valor_score_event=valor_simple_del_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.DEL.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
-					print valor_result
+					print (valor_result)
 				elif x[-1] in ['a/a^','a^/a','a^/a^','INV']:	
 					key_event=':'.join([str(i) for i in x[:-2]]+['INV'])
 					valor_score_event=valor_simple_inv_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.INV.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
-					print valor_result
+					print (valor_result)
 				elif x[-1] in ['INS']:
 					key_event=':'.join([str(i) for i in x[:-2]+['INS']])
 					ins_pos='_'.join([str(i) for i in x[:2]])
@@ -158,15 +158,15 @@ else:
 					valor_score_event=valor_simple_ins_Valor(bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event+'.png',POLARITY)
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
-					print valor_result
+					print (valor_result)
 				elif x[-1] in ['a/aa','aa/a','aa/aa','DUP','TANDUP']:
 					key_event=':'.join([str(i) for i in x[:-2]]+['TANDUP'])
 					valor_score_event=valor_simple_tandup_Valor(bam_in,ref,x[:-2],out_path+sample_name+'.TANDUP.'+key_event+'.png')
 					valor_result=result_organize_ins([key_event,valor_score_event])
 					write_output_main(bed_input+'.valor',valor_result[0].split(':')+valor_result[1:])
-					print valor_result
+					print (valor_result)
 				else:
-					print x
+					print (x)
 	elif function_name=='vcf':
 		if len(sys.argv)==2:
 			import valor_vali.prep as prep
@@ -298,7 +298,7 @@ else:
 				if x=='DEL':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							#eg of y=['chr1', '91666237', '91667096']
 							key_event=':'.join([str(i) for i in y]+['DEL'])
 							valor_score_event=valor_simple_del_Valor(bam_in,ref,y,out_path+sample_name+'.DEL.'+key_event+'.png')
@@ -306,7 +306,7 @@ else:
 				elif x=='INV':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							#eg of y=['chr1', '91666237', '91667096']
 							key_event=':'.join([str(i) for i in y]+['INV'])
 							valor_score_event=valor_simple_inv_Valor(bam_in,ref,y,out_path+sample_name+'.INV.'+key_event+'.png')
@@ -314,7 +314,7 @@ else:
 				elif x=='INS':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							key_event=':'.join([str(i) for i in y[:3]+['INS']])
 							ins_pos='_'.join([str(i) for i in y[:2]])
 							POLARITY='+'
@@ -325,21 +325,21 @@ else:
 				elif x=='DISDUP':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							key_event=':'.join([str(i) for i in y+['DISDUP']])
 							valor_score_event=valor_simple_disdup_Valor(bam_in,ref,y,out_path+sample_name+'.DISDUP.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='DEL_INV':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							key_event=':'.join(['_'.join([str(i) for i in j]) for j in y]+['DEL_INV'])
 							valor_score_event=valor_del_inv_Valor(bam_in,ref,y,out_path+sample_name+'.DEL_INV.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				elif x=='DUP_INV':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							#y=['chr7', '121522364', '121522527', 'chr7', '121522527']
 							key_event=':'.join([str(i) for i in y+['DUP_INV']])
 							valor_score_event=valor_dup_inv_ValoR(bam_in,ref,y,out_path+sample_name+'.DUP_INV.'+key_event+'.png')
@@ -347,13 +347,13 @@ else:
 				elif x=='Other':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
-							print y
+							print (y)
 							#eg of y=['ab_ab', 'ab_bb^', 'chr15', '95148444', '95149304', '95149530']
 							key_event=':'.join([str(i) for i in y+['CANNOT_CLASSIFY']])
 							valor_score_event=valor_CANNOT_CLASSIFY_ValoR(bam_in,ref,y,out_path+sample_name+'.CANNOT_CLASSIFY.'+key_event+'.png')
 							write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
 				else:
-					print x
+					print (x)
 			vcf_valor_modify(vcf_input,vcf_rec_hash_new)
 	elif function_name=='svelter':
 		#command='valor svelter --sv-input /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version16/HG00512.alt_bwamem_GRCh38DH.20150715.CHS.high_coverage.svelter --output-path /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version16/HG00512.svelter.valor/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
@@ -427,7 +427,7 @@ else:
 		for k1 in svelter_hash.keys():
 			for k2 in svelter_hash[k1].keys():
 				for k3 in svelter_hash[k1][k2]:
-					print [k1,k2,k3]
+					print ([k1,k2,k3])
 					key_event='_'.join(['-'.join(k1.split('/')),'-'.join(k2.split('/'))]+k3)
 					valor_score_event=calcu_eu_dis_svelter(bam_in,reference,[k1,k2,k3],out_path+sample_name+key_event+'.png')
 					write_output_main(vcf_input+'.valor',result_organize_ins([key_event,valor_score_event]))
