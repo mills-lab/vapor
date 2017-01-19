@@ -8,7 +8,7 @@ python:   https://www.python.org/
 samtools: http://samtools.sourceforge.net/
 ```
 ##Usage:
-Usage: VaLoR [Options] [Parameters]
+Usage: valor [Options] [Parameters]
 
 Options: 
 
