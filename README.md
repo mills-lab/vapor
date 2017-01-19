@@ -36,6 +36,17 @@ cd valor
 python setup install --user
 ```
 
+Run VaLoR on a bed file
+```
+valor bed --sv-input ../input.bed --output-path ../valor_result/ --reference ../reference.fa --pacbio-input sample.bam
+```
+
+Run VaLoR on a vcf file
+```
+valor vcf --sv-input ../input.vcf --output-path ../valor_result/ --reference ../reference.fa --pacbio-input sample.bam
+```
+
+
 ##Instructions for input file:
 ###SV input in bed format:
 SV input in bed format should be consist of 4 columns, specifying the chromosome , start, end and description of the variance. The description column should specify the type of the variance (eg. DEL, DUP, INV, INS). For insertions, the description column should have either the sequence of the length of insertion, or both, separated by '_' 
