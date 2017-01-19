@@ -10,7 +10,7 @@ setup(
    author_email="xuefzhao@umich.edu",
    description="Long read based genomic structural variants validator.",
    packages=["valor_vali"],
-   scripts=["valor_vali/valor", "valor_vali/VaLoR"],
+   scripts=["valor_vali/valor"],
    package_data={
        "valor_vali": [
            "templates/pred_config",

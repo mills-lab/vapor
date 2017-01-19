@@ -33,7 +33,7 @@ Optional Parameters:
 Download and Install
 ```
 git clone https://github.com/mills-lab/valor.git
-cd VaLoR
+cd valor
 python setup install --user
 ```
 
