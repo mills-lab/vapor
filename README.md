@@ -1,6 +1,6 @@
 # VaLoR
 ##Description
-*VaLoR* is a structural variants (SVs) validator based on long reads.  *VaLoR* could read in VCF files in format 4.1 or newer, and the corresponding long reads in bam format to sore each prediction. 
+*VaLoR* is a structural variants (SVs) validator based on long reads.  *VaLoR* could read in VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
 
 ##Required third-party resources
 ```
@@ -33,7 +33,7 @@ Download and Install
 ```
 git clone https://github.com/mills-lab/valor.git
 cd valor
-python setup install --user
+python setup.py install --user
 ```
 
 Run VaLoR on a bed file
@@ -60,7 +60,7 @@ chr1	3935209	3935209	INS_191
 ```
 
 
-###SV input in valor format:
+###SV input in vcf format:
 If complex structural variants are encoded within the vcf input, the INFO column should describe the complex event in the similar format as the examples listed below:
 ```
 chr6	119011725	chr6:119011725:119012294:119012497:119013928	t	<DISDUP>	92	PASSSVTYPE=disdup;END=119012294;insert_point=chr6:119013928;Other=abc/abc_abc/abca_chr6:119011725:119012294:119012497:119013928	GT	0/1
