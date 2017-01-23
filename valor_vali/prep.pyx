@@ -26,7 +26,7 @@ def readme_melt():
 	print ('	--pacbio-input:		absolute path of input pacbio file')
 
 def readme_bed():
-	print (valor_version
+	print (valor_version)
 	print ('Contact: Xuefang Zhao (xuefzhao@umich.edu)')
 	print ('')
 	print ('Usage: valor bed [Parameters]')
