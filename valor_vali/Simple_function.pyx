@@ -78,7 +78,7 @@ def bam_in_decide(bam_in,bps):
         elif '*' in bam_in.split('/')[-1]:
             bam_in_keys=bam_in.split('/')[-1].split('*')
         else:
-            print 'Error: invalid name for pacbio files !'
+            print ('Error: invalid name for pacbio files !')
         for k1 in os.listdir(bam_in_path):
             if k1.split('.')[-1]==bam_in.split('.')[-1]:
                 flag=0
@@ -733,7 +733,7 @@ def eu_dis_region_calcu(list_dotdata,list_bps):
     if reca<len(list_dotdata):
         ref_region[-1]+=list_dotdata[reca:]
     out=[eu_dis_dir_calcu(i) for i in ref_region]
-    print out
+    print (out)
     out_new=[i for i in out if abs(i)>1]
     if out_new==[]:     return 0.0001
     else:               return np.mean(out_new)
@@ -937,14 +937,14 @@ def kmerhits(seq1, seq2, kmerlen, nth_base=1, inversions=False):
     # hash table for finding hits
     lookup = {}
     # store sequence hashes in hash table
-    #print "hashing seq1..."
+    #print ("hashing seq1...")
     seq1len = len(seq1)
     for i in xrange(seq1len - kmerlen + 1):
         key = seq1[i:i+kmerlen]
         for subkey in subkeys(key, nth_base, inversions):
             lookup.setdefault(subkey, []).append(i)
     # match every nth base by look up hashes in hash table
-    #print "hashing seq2..."
+    #print ("hashing seq2...")
     hits = []
     for i in xrange(len(seq2) - kmerlen + 1):
         key = seq2[i:i+kmerlen]
@@ -952,7 +952,7 @@ def kmerhits(seq1, seq2, kmerlen, nth_base=1, inversions=False):
         for subkey in subkeys(key, nth_base, False):
             subhits = []
             if kmerlen>40:
-                print 'Window size:' +str(kmerlen)
+                print ('Window size:' +str(kmerlen))
                 for k1 in lookup.keys():
                     if edit_dis_setup(k1,subkey)<int(kmerlen/10)+1:
                         subhits+=lookup[k1]
@@ -1018,8 +1018,6 @@ def make_event_figure_1(valor_score_list,best_read_rec,window_size,ref_seq,alt_s
                 graphics = importr("graphics")
                 if  len(out_figure_name.split('/')[-1])>150:
                     out_figure_name='/'.join(out_figure_name.split('/')[:-1])+'/'+out_figure_name.split('/')[-1][:140]+'.'+out_figure_name.split('.')[-1]
-                #print out_figure_name
-                #print dotdata_record
                 grdevices.png(file=out_figure_name, width=512, height=512)
                 graphics.par(mfrow=IntVector([2,2]))
                 #penal 1
@@ -1477,7 +1475,6 @@ def valor_CANNOT_CLASSIFY_ValoR(bam_in,ref,sv_info,out_figure_name):
                 alt_juncs=block_around_check(alt_allele,ref_sv[0])
                 bp_let_hash=bp_to_chr_hash(bp_info[0],chromos,flank_length)
                 for alt_jun in alt_juncs:
-                    print alt_jun
                     if not '^' in alt_jun[0]:                        ref_seq_a=ref_seq_readin(ref,bp_let_hash[alt_jun[0][0]][0],bp_let_hash[alt_jun[0][0]][2]-flank_length,bp_let_hash[alt_jun[0][0]][2]+flank_length)
                     else:                                            ref_seq_a=reverse(complementary(ref_seq_readin(ref,bp_let_hash[alt_jun[0][0]][0],bp_let_hash[alt_jun[0][0]][1]-flank_length,bp_let_hash[alt_jun[0][0]][1]+flank_length)))
                     if not '^' in alt_jun[1]:                        ref_seq_b=ref_seq_readin(ref,bp_let_hash[alt_jun[1][0]][0],bp_let_hash[alt_jun[1][0]][1]-flank_length,bp_let_hash[alt_jun[1][0]][1]+flank_length)
