@@ -7,6 +7,8 @@
 """
 
 
+from __future__ import print_function
+
 # python libs
 import copy
 import pickle

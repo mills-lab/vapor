@@ -1,11 +1,10 @@
 ###############################################################################
 # Graph plot class (GNUPLOT wrapper)
 
+from __future__ import print_function
 import sys, os
 
 from vapor_vali.util import *
-
-
 
 class Gnuplot:
     class Plot:
