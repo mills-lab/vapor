@@ -1,6 +1,6 @@
-# VaLoR
+# VaPoR
 ##Description
-*VaLoR* is a structural variants (SVs) validator based on long reads.  *VaLoR* could read in VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
+*VaPoR* is a structural variants (SVs) validator based on PacBio long reads.  *VaPoR* reads in BED files or VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
 
 ##Required third-party resources
 ```
@@ -8,12 +8,12 @@ python:   https://www.python.org/
 samtools: http://samtools.sourceforge.net/
 ```
 ##Usage:
-Usage: valor [Options] [Parameters]
+Usage: vapor [Options] [Parameters]
 
 Options: 
 
 	vcf - if input structural variants are encoded in vcf format
-	bed - if input structural variants are encoded in bed  format
+	bed - if input structural variants are encoded in bed format
 	
 Parameters:
 
@@ -25,25 +25,26 @@ Parameters:
 Optional Parameters:
 
 	--window-size
-	--sv-type
 	
 
 ##Quick Start
 Download and Install
 ```
-git clone https://github.com/mills-lab/valor.git
-cd valor
+git clone https://github.com/mills-lab/vapor.git
+cd vapor
 python setup.py install --user
+export PATH=$PATH:$HOME/.local/bin
 ```
+please add 'export PATH=$PATH:$HOME/.local/bin' to your bashrc file
 
-Run VaLoR on a bed file
+Run VaPoR on a bed file
 ```
-valor bed --sv-input ../input.bed --output-path ../valor_result/ --reference ../reference.fa --pacbio-input sample.bam
+vapor bed --sv-input ../input.bed --output-path ../vapor_result/ --reference ../reference.fa --pacbio-input ../sample.bam
 ```
 
 Run VaLoR on a vcf file
 ```
-valor vcf --sv-input ../input.vcf --output-path ../valor_result/ --reference ../reference.fa --pacbio-input sample.bam
+valor vcf --sv-input ../input.vcf --output-path ../vapor_result/ --reference ../reference.fa --pacbio-input ../sample.bam
 ```
 
 
