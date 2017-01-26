@@ -4,23 +4,23 @@ from Cython.Build import cythonize
 import os
 import sys
 setup(
-   name="VaLoR",
+   name="VaPoR",
    version="0.0.1",
    author="Xuefang Zhao, University of Michigan",
    author_email="xuefzhao@umich.edu",
-   description="Long read based genomic structural variants validator.",
-   packages=["valor_vali"],
-   scripts=["valor_vali/valor"],
+   description="PacBio long read based genomic structural variants validator.",
+   packages=["vapor_vali"],
+   scripts=["vapor_vali/vapor"],
    package_data={
-       "valor_vali": [
+       "vapor_vali": [
            "templates/pred_config",
            "templates/truth_config",
            "contrib/SMCScoring.py",
        ],
    },
-    ext_modules = cythonize("valor_vali/*.pyx"),
+    ext_modules = cythonize("vapor_vali/*.pyx"),
      install_requires=[
-     'cython', 'numpy','scipy','matplotlib','sklearn'
+     'cython', 'numpy','scipy','matplotlib','sklearn','rpy2'
       ],
     license="Propriety",
     keywords="Long read",
