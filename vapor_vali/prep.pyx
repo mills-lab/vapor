@@ -1,3 +1,4 @@
+from __future__ import print_function
 vapor_version='vapor V1.0 12-21-2015'
 def print_read_me():
 	print (vapor_version)

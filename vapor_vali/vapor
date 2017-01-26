@@ -10,15 +10,11 @@
 #command='vapor vcf --sv-input /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version17/All.Individuals.vcf --output-path /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version17/vapor_test/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
 #command='vapor vcf --sv-input test.vcf --output-path ./test/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
 #Test SVelter:
-#command='vapor svelter --sv-input HG00512_INV.revisit.svelter --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --output-path HG00512_INV.revisit.vapor'
-
 #sys.argv=command.split()
+from __future__ import absolute_import
+from __future__ import print_function
 
-
-import os
-import re
-import sys
-
+import os,re,sys
 if len(sys.argv)<2: 
 	import vapor_vali.prep as prep
 	prep.print_read_me()

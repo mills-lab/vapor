@@ -1,15 +1,12 @@
-import os
-import itertools
+from __future__ import print_function
+
+import os,sysm,itertools
 import matplotlib.pyplot as plt
-import numpy as np
-import random
-import math
-import rpy2
-import scipy
-import sys
+import math,random,numpy,scipy,rpy2
 import vapor_vali.plotting as plotting
 import scipy.stats
 import scipy.optimize
+import numpy as np
 from rpy2.robjects.packages import importr
 from rpy2.robjects.vectors import IntVector, FloatVector, StrVector
 from scipy.cluster.vq import vq, kmeans, whiten
