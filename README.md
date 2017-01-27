@@ -42,9 +42,9 @@ Run VaPoR on a bed file
 vapor bed --sv-input ../input.bed --output-path ../vapor_result/ --reference ../reference.fa --pacbio-input ../sample.bam
 ```
 
-Run VaLoR on a vcf file
+Run VaPoR on a vcf file
 ```
-valor vcf --sv-input ../input.vcf --output-path ../vapor_result/ --reference ../reference.fa --pacbio-input ../sample.bam
+vapor vcf --sv-input ../input.vcf --output-path ../vapor_result/ --reference ../reference.fa --pacbio-input ../sample.bam
 ```
 
 

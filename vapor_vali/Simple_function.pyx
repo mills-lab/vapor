@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import os,sysm,itertools
+import os,sys,itertools
 import matplotlib.pyplot as plt
 import math,random,numpy,scipy,rpy2
 import vapor_vali.plotting as plotting
