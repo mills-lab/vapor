@@ -7,11 +7,9 @@
 """
 
 
-from __future__ import print_function
-
 # python libs
 import copy
-import pickle
+import cPickle
 import math
 import os
 import re
@@ -19,7 +17,7 @@ import shutil
 import sys
 import time
 import traceback
-import urllib.request, urllib.error, urllib.parse
+import urllib2
 
 
 
@@ -66,7 +64,7 @@ class Closure:
     """
 
     def __init__(self, **variables):
-        for key, val in variables.items():
+        for key, val in variables.iteritems():
             setattr(self, key, val)
 
 
@@ -131,17 +129,17 @@ class Dict (dict):
         def walk(node, path):
             if node.dim == 1:
                 for i in node:
-                    print("  ", end=' ', file=out)
+                    print >>out, "  ",
                     for j in path:
-                        print(str(j) + ", ", end=' ')
-                    print(i, ":", node[i], file=out)
+                        print str(j) + ", ",
+                    print >>out, i, ":", node[i]
             else:
                 for i in node:
                     walk(node[i], path + [i])
         
-        print("< DictMatrix ", file=out)
+        print >>out, "< DictMatrix "
         walk(self, [])
-        print(">", file=out)
+        print >>out, ">"
 
 
 class Percent (float):
@@ -272,10 +270,10 @@ def revdict(dic, allowdups=False):
     
     dic2 = {}
     if allowdups:
-        for key, val in dic.items():
+        for key, val in dic.iteritems():
             dic2[val] = key
     else:
-        for key, val in dic.items():
+        for key, val in dic.iteritems():
             assert key not in dic2, "duplicate value '%s' in dict" % val
             dic2[val] = key
     
@@ -323,7 +321,7 @@ def mapdict(dic, keyfunc=lambda x:x, valfunc=lambda x:x):
     """
     
     dic2 = {}
-    for key, val in dic.items():
+    for key, val in dic.iteritems():
         dic2[keyfunc(key)] = valfunc(val)
     
     return dic2
@@ -401,19 +399,19 @@ def map2(func, matrix):
     """Maps a function onto the elements of a matrix
     """
     
-    return [list(map(func, row)) for row in matrix]
+    return [map(func, row) for row in matrix]
 
 
 def min2(matrix):
     """Finds the minimum of a 2D list or matrix
     """
-    return min(list(map(min, matrix)))
+    return min(map(min, matrix))
 
 
 def max2(matrix):
     """Finds the maximum of a 2D list or matrix
     """
-    return max(list(map(max, matrix)))
+    return max(map(max, matrix))
 
 
 class range2:
@@ -426,7 +424,7 @@ class range2:
     def __iter__(self):
         return self
     
-    def __next__(self):
+    def next(self):
         self.i += 1
         if self.i >= self.width:
             self.j += 1
@@ -483,7 +481,7 @@ def countgt(a, lst): return count(gtfunc(a), lst)
 def find(func, lst):
     """Returns the indices of func(x) == True for x in list 'lst'"""
     pos = []
-    for i in range(len(lst)):
+    for i in xrange(len(lst)):
         if func(lst[i]):
             pos.append(i)
     return pos
@@ -523,12 +521,12 @@ def islands(lst):
         if current_char == lst[i]:
             i = i+1
         else:
-            if current_char not in counting: counting[current_char] = []
+            if not counting.has_key(current_char): counting[current_char] = []
             counting[current_char].append((current_start, i))
             current_char = lst[i]
             current_start = i
 
-    if current_char not in counting: counting[current_char] = []
+    if not counting.has_key(current_char): counting[current_char] = []
     counting[current_char].append((current_start, i))
 
     return counting
@@ -546,7 +544,7 @@ def overlap(a, b, x, y, inc=True):
 def argmax(lst):
     assert len(lst) > 0
     top = 0
-    for i in range(1, len(lst)):
+    for i in xrange(1, len(lst)):
         if lst[i] > lst[top]:
             top = i
     return top
@@ -554,7 +552,7 @@ def argmax(lst):
 def argmin(lst):
     assert len(lst) > 0
     low = 0
-    for i in range(1, len(lst)):
+    for i in xrange(1, len(lst)):
         if lst[i] < lst[low]:
             low = i
     return low
@@ -583,7 +581,7 @@ def argmaxfunc(func, lst):
     assert len(lst) > 0
     top = 0
     topval = func(lst[top])
-    for i in range(1,len(lst)):
+    for i in xrange(1,len(lst)):
         val = func(lst[i])
         if val > topval:
             topval = val
@@ -595,7 +593,7 @@ def argminfunc(func, lst):
     assert len(lst) > 0
     low = 0
     lowval = func(lst[low])
-    for i in range(1, len(lst)):
+    for i in xrange(1, len(lst)):
         val = func(lst[i])
         if val < lowval:
             lowval = val
@@ -679,7 +677,7 @@ def compose(* funcs):
         return lambda x: f(g(x))
     
     f = funcs[-1]
-    for i in range(len(funcs)-2, -1, -1):
+    for i in xrange(len(funcs)-2, -1, -1):
         f = compose2(funcs[i], f)
     return f
 
@@ -781,7 +779,7 @@ def writeVector(filename, vec):
     """
     out = openStream(filename, "w")
     for i in vec:
-        print(i, file=out)
+        print >>out, i
 
 
 def openStream(filename, mode = "r"):
@@ -811,7 +809,7 @@ def openStream(filename, mode = "r"):
     elif isinstance(filename, str):
         # open URLs
         if filename.startswith("http://"):
-            return urllib.request.urlopen(filename)
+            return urllib2.urlopen(filename)
         
         # open stdin and stdout
         elif filename == "-":
@@ -883,7 +881,7 @@ def printcols(data, width=None, spacing=1, format=defaultFormat,
         if width == None:
             width = 75
         
-        ncols = int(width / (max([len(str(x)) for x in data])+ spacing))
+        ncols = int(width / (max(map(lambda x: len(str(x)), data))+ spacing))
         mat = list2matrix(data, ncols=ncols, bycols=True)
     
     
@@ -892,20 +890,20 @@ def printcols(data, width=None, spacing=1, format=defaultFormat,
     
     
     # ensure every row has same number of columns
-    maxcols = max(list(map(len, matstr)))
+    maxcols = max(map(len, matstr))
     for row in matstr:
         if len(row) < maxcols:
             row.extend([""] * (maxcols - len(row)))
     
     
     # find the maximum width char in each column
-    maxwidths = list(map(max, map2(len, list(zip(* matstr)))))
+    maxwidths = map(max, map2(len, zip(* matstr)))
     
     
     # print out matrix with whitespace padding
-    for i in range(len(mat)):
+    for i in xrange(len(mat)):
         fields = []
-        for j in range(len(mat[i])):
+        for j in xrange(len(mat[i])):
             just = justify(mat[i][j])
             
             if just == "right":
@@ -932,9 +930,9 @@ def list2matrix(lst, nrows=None, ncols=None, bycols=True):
     else:
         ncols = int(math.ceil(len(lst) / min(nrows, len(lst))))
 
-    for i in range(nrows):
+    for i in xrange(nrows):
         mat.append([])
-        for j in range(ncols):
+        for j in xrange(ncols):
             if bycols:
                 k = i + j*nrows
             else:
@@ -969,7 +967,7 @@ def printDict(dic, keyfunc=lambda x: x, valfunc=lambda x: x,
         num = len(dic)
     
     dic = mapdict(dic, keyfunc=keyfunc, valfunc=valfunc)
-    items = list(dic.items())
+    items = dic.items()
     items.sort(compare)
     
     printcols(items[:num], spacing=spacing, out=out, format=format, 
@@ -1002,7 +1000,7 @@ def printHist(array, ndivs=20, width=75, spacing=2, out=sys.stdout):
     data = list(hist(array, ndivs))                                             
                                                                                 
     # find max bar                                                              
-    maxwidths = list(map(max, map2(compose(len, str), data)))                         
+    maxwidths = map(max, map2(compose(len, str), data))                         
     maxbar = width - sum(maxwidths) - 2 * spacing                               
                                                                                 
     # make bars                                                                 
@@ -1012,7 +1010,7 @@ def printHist(array, ndivs=20, width=75, spacing=2, out=sys.stdout):
         bars.append("*" * int(count * maxbar / float(maxcount)))                
     data.append(bars)                                                           
                                                                                 
-    printcols(list(zip(* data)), spacing=spacing, out=out)   
+    printcols(zip(* data), spacing=spacing, out=out)   
 
 
 def int2pretty(num):
@@ -1021,7 +1019,7 @@ def int2pretty(num):
     string = str(num)
     parts = []
     l = len(string)
-    for i in range(0, l, 3):
+    for i in xrange(0, l, 3):
         t = l - i
         s = t - 3
         if s < 0: s = 0
@@ -1068,13 +1066,13 @@ class DelimReader:
         self.headers = []
         
         if self.header:
-            self.headers = self.split(next(self.infile))
+            self.headers = self.split(self.infile.next())
 
     def __iter__(self):
         return self
     
-    def __next__(self):
-        line = next(self.infile)
+    def next(self):
+        line = self.infile.next()
         fields = self.split(line)
         
         if self.header and self.useDict:
@@ -1101,7 +1099,7 @@ def writeDelim(filename, data, delim="\t"):
     
     out = openStream(filename, "w")
     for line in data:
-        print(delim.join(map(str, line)), file=out)
+        print >>out, delim.join(map(str, line))
 
 
 class IterFunc:
@@ -1111,15 +1109,15 @@ class IterFunc:
     def __iter__(self):
         return self
     
-    def __next__(self):
+    def next(self):
         return self.func()
     
 
 def selcolIter(myiter, cols):       
-    return IterFunc(lambda: sublist(next(myiter), cols))
+    return IterFunc(lambda: sublist(myiter.next(), cols))
 
 def joinIter(myiter, delim):
-    return IterFunc(lambda: delim.join(next(myiter)))
+    return IterFunc(lambda: delim.join(myiter.next()))
 
 def cutIter(myiter, cols, delim=None):
     return IterFunc(lambda: delim.join(sublist(myiter.next().split(delim), cols)))
@@ -1145,7 +1143,7 @@ class SafeReadIter:
     def __iter__(self):
         return self
     
-    def __next__(self):
+    def next(self):
         line = self.infile.readline()
         if line == "":
             raise StopIteration
@@ -1249,9 +1247,9 @@ def listFiles(path, extension=""):
     """Returns a list of files in 'path' with ending with 'extension'"""
     if path[-1] != "/":
         path += "/"
-    files = [x for x in os.listdir(path) if x.endswith(extension)]
+    files = filter(lambda x: x.endswith(extension), os.listdir(path))
     files.sort()
-    files = [path + x for x in files]
+    files = map(lambda x: path + x, files)
     return files
 
 def tempfile(dir, prefix, ext):
@@ -1284,7 +1282,7 @@ def deldir(path):
     os.path.walk(path, cleandir, "")
     
     # remove directories
-    for i in range(len(dirs)):
+    for i in xrange(len(dirs)):
         # AFS work around
         afsFiles = listFiles(dirs[-i])
         for f in afsFiles:
@@ -1294,7 +1292,7 @@ def deldir(path):
             try:
                 if os.path.exists(dirs[-i]):
                     os.rmdir(dirs[-i])
-            except Exception as e:
+            except Exception, e:
                 continue
             break
 
@@ -1312,7 +1310,7 @@ def replaceExt(filename, oldext, newext):
 #
 def sortInd(array, compare = cmp):
     """Returns list of indices into 'array' sorted by 'compare'"""
-    ind = list(range(len(array)))
+    ind = range(len(array))
     ind.sort(lambda x, y: compare(array[x], array[y]))
     return ind
 
@@ -1353,7 +1351,7 @@ def invPerm(perm):
 def oneNorm(vals):
     """Normalize values so that they sum to 1"""
     s = float(sum(vals))
-    return [x/s for x in vals]
+    return map(lambda x: x/s, vals)
 
 def bucketSize2(array, ndivs=20):
     """
@@ -1396,7 +1394,7 @@ def bucketBin(item, ndivs, low, width):
 def bucket(array, ndivs=None, low=None, width=None, key=lambda x: x):
     """Group elements of 'array' into 'ndivs' lists"""
 
-    keys = list(map(key, array))
+    keys = map(key, array)
 
     # set bucket sizes
     ndivs, low, width = bucketSize(keys, ndivs, low, width)
@@ -1444,7 +1442,7 @@ def hist2(array1, array2,
     ndivs2, low2, width2 = bucketSize(array2, ndivs2, low2, width2)
     
     # init histogram
-    h = [[0] * ndivs1 for i in range(ndivs2)]
+    h = [[0] * ndivs1 for i in xrange(ndivs2)]
     labels = []
     
     for j,i in zip(array1, array2):
@@ -1470,7 +1468,7 @@ def distrib(array, ndivs=None, low=None, width=None):
     area = 0
     
     total = float(sum(h[1]))
-    return (h[0], [(x/total)/width for x in h[1]])
+    return (h[0], map(lambda x: (x/total)/width, h[1]))
 
 
 def plothist(array, ndivs=None, low=None, width=None, **options):
@@ -1524,4 +1522,4 @@ def histDict(array):
 
 # import common functions from other files, 
 # so that only util needs to be included
-from .plotting import *
+from plotting import *
