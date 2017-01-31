@@ -9,7 +9,6 @@
 
 # python libs
 import copy
-import cPickle
 import math
 import os
 import re
@@ -17,7 +16,11 @@ import shutil
 import sys
 import time
 import traceback
-import urllib2
+
+if sys.version_info.major == 2:
+    import urllib2
+else:
+    import urllib
 
 
 
@@ -30,6 +33,8 @@ import urllib2
 # representing infinity
 INF = float("1e1000") 
 
+def cmp(a, b):
+    return (a > b) - (a < b) 
 
 def GLOBALS():
     """Maintains a global set of variables"""
