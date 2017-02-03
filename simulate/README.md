@@ -7,7 +7,7 @@ __Summary__: Together, these scripts can be used to simulate non-overlapping str
 __Details__: Two scripts are to be run in succession. The first takes in the  reference genome as well as a file describing the varaints to be simulated (see below for more info). The purpose of this first script is to distribute the variants to  be simulated across the chromosomes allowing the actual simulation of variants on each chromosome to run independently of one another. Using the generated variant counts for a given chromosome, the second script will randomly select locations for the SVs on the chromosome, avoiding regions specified in the blacklist and ensuring there is no overlap between simulated variants. 
 
 ## Output Files
-Sequences in bam format can be downloaded [here] (https://umich.box.com/v/vapor) 
+Sequences in bam format used for vapor validation can be downloaded [here] (https://umich.box.com/v/vapor) 
 
 ## Required third party resources
 ```
