@@ -1,6 +1,6 @@
 This repository provides PacBio sequences from chr10 of NA12878 as a test case. 
 
-Sequences in bam format can be downloaded [here](https://umich.box.com/s/jcik3yddt5ifqk8efhein2wxdvisi3gi)
+Sequences in bam format can be downloaded [here](https://umich.box.com/v/vapor)
 
 To run vapor on the test:
 ```
