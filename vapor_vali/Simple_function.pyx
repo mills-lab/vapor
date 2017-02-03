@@ -1919,12 +1919,12 @@ def write_dotdata_to_file(file_out,dotdata_list):
 
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
-    print('\t'.join(['chr','start','end','SV_description','VaPoR_quality_score','VaPoR_genotype_score','other']), file=fo)
+    print('\t'.join(['chr','start','end','SV_description','VaPoR_quality_score','VaPoR_genotype_score']), file=fo)
     fo.close()
 
 def write_output_main(out_name,out_list):
     fo=open(out_name,'a')
-    print('\t'.join([str(i) for i in out_list]), file=fo)
+    print('\t'.join([str(i) for i in out_list[:-1]]), file=fo)
     fo.close()
 
 def x_to_x_modify_new(x,dup_block_combined):
