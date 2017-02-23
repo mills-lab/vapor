@@ -1,14 +1,14 @@
 from __future__ import print_function
 
-import os,sys,itertools
+import os,sys,itertools,math,random,numpy,scipy
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
-import math,random,numpy,scipy,rpy2
-import vapor_vali.plotting as plotting
 import scipy.stats
-import scipy.optimize
 import numpy as np
-from rpy2.robjects.packages import importr
-from rpy2.robjects.vectors import IntVector, FloatVector, StrVector
+#import vapor_vali.plotting as plotting
+#from rpy2.robjects.packages import importr
+#from rpy2.robjects.vectors import IntVector, FloatVector, StrVector
 from scipy.cluster.vq import vq, kmeans, whiten
 from scipy import stats
 from scipy.stats import linregress
@@ -1006,30 +1006,69 @@ def list_unify(list):
         if not i in out:    out.append(i)
     return out
 
-def make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name):
+def quality(hits):
+    """determines the quality of a list of hits"""
+    slope1 = 1.0e6 / (825000 - 48000)
+    slope2 = 1.0e6 / (914000 - 141000)
+    offset1 = 0 - slope1*48000
+    offset2 = 0 - slope2*141000
+    goodhits = []
+    for hit in hits:
+        upper = slope1 * hit[0] + offset1
+        lower = slope2 * hit[0] + offset2
+        if lower < hit[1] < upper:
+            goodhits.append(hit)
+    return goodhits
+
+def makeDotplot_subfigure(hits, title,figure_pos):
+    #"""generate a dotplot from a list of hits filename may end in the following file extensions: *.ps, *.png, *.jpg"""
+    if len(hits)==0: 
+        #print hits
+        return ' '
+    x, y = zip(* hits)
+    slope1 = 1.0e6 / (825000 - 48000)
+    slope2 = 1.0e6 / (914000 - 141000)
+    offset1 = 0 - slope1*48000
+    offset2 = 0 - slope2*141000
+    hits2 = quality(hits)
+    xlib_range=int(float(max(x))/float(10**(len(str(max(x)))-1)))+1
+    if xlib_range<3:
+        xlib=[(i+1)*10**(len(str(max(x)))-1) for i in range(xlib_range)]
+        xlib_new=[xlib[0]/2]
+        for xi in range(len(xlib)-1):
+            xlib_new.append(xlib_new[0]*(2*(xi+1)+1))
+        xlib+=xlib_new
+        xlib.sort()
+    elif xlib_range<5:
+        xlib=[(i+1)*10**(len(str(max(x)))-1) for i in range(xlib_range)]
+    else:
+        xlib=[(i+1)*2*10**(len(str(max(x)))-1) for i in range(int(xlib_range/2+1)+1)]
+    plt.subplot(figure_pos)
+    plt.plot(x, y,'+',color='r')
+    plt.xticks(xlib, [str(i) for i in xlib])
+    plt.title(title)
+    plt.grid(False)
+    #print "%.5f%% hits on diagonal" % (100 * len(hits2) / float(len(hits)))
+    # create plot
+
+def make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name):
+    nth_base = 1
+    inversions = True
     if not best_read_rec=='':
         if not best_read_rec==[]:
             dotdata_record=[dotdata(window_size,ref_seq,ref_seq),    dotdata(window_size,alt_seq,alt_seq),    dotdata(window_size,best_read_rec[0],ref_seq[best_read_rec[1]:]),    dotdata(window_size,best_read_rec[0],alt_seq[best_read_rec[1]:])]
+            [hits_ref_ref,hits_alt_alt,hits_ref,hits_alt]=dotdata_record
             if not [] in dotdata_record: 
-                grdevices = importr('grDevices')
-                graphics = importr("graphics")
                 if  len(out_figure_name.split('/')[-1])>150:
                     out_figure_name='/'.join(out_figure_name.split('/')[:-1])+'/'+out_figure_name.split('/')[-1][:140]+'.'+out_figure_name.split('.')[-1]
-                grdevices.png(file=out_figure_name, width=512, height=512)
-                graphics.par(mfrow=IntVector([2,2]))
-                #penal 1
-                graphics.plot([min([i[0] for i in dotdata_record[0]]),max([i[0] for i in dotdata_record[0]])],[min([i[1] for i in dotdata_record[0]]),max([i[1] for i in dotdata_record[0]])],type='n',xlab='oroginal_reference',ylab='oroginal_reference')
-                graphics.points([i[0] for i in dotdata_record[0]],[i[1] for i in dotdata_record[0]],col='red',pch='+')
-                #penal 2
-                graphics.plot([min([i[0] for i in dotdata_record[1]]),max([i[0] for i in dotdata_record[1]])],[min([i[1] for i in dotdata_record[1]]),max([i[1] for i in dotdata_record[1]])],type='n',xlab='altered_reference',ylab='altered_reference')
-                graphics.points([i[0] for i in dotdata_record[1]],[i[1] for i in dotdata_record[1]],col='red',pch='+')
-                #penal 3
-                graphics.plot([min([i[0] for i in dotdata_record[2]]),max([i[0] for i in dotdata_record[2]])],[min([i[1] for i in dotdata_record[2]]),max([i[1] for i in dotdata_record[2]])],type='n',ylab='PacBio read',xlab='oroginal_reference')
-                graphics.points([i[0] for i in dotdata_record[2]],[i[1] for i in dotdata_record[2]],col='red',pch='+')
-                #penal 4
-                graphics.plot([min([i[0] for i in dotdata_record[3]]),max([i[0] for i in dotdata_record[3]])],[min([i[1] for i in dotdata_record[3]]),max([i[1] for i in dotdata_record[3]])],type='n',ylab='PacBio read',xlab='altered_reference')
-                graphics.points([i[0] for i in dotdata_record[3]],[i[1] for i in dotdata_record[3]],col='red',pch='+')
-                grdevices.dev_off()
+                fig=plt.figure(plt_li)
+                makeDotplot_subfigure(hits_ref_ref,'ref vs. ref',221)
+                makeDotplot_subfigure(hits_alt_alt,'alt vs. alt',222)
+                makeDotplot_subfigure(hits_ref,'read vs. ref',223)
+                makeDotplot_subfigure(hits_alt,'read vs. alt',224)
+                plt.savefig(out_figure_name)
+                #plt.show()
+                plt.close(fig)
 
 def minimize_pacbio_read_list(x,ideal_list_length=20):
     #eg of x=chop_pacbio_read_by_pos(bam_in_new,chrom,start,end,flank_length)
@@ -1430,7 +1469,7 @@ def unify_list(list):
             out.append(x)
     return out
 
-def vapor_CANNOT_CLASSIFY_VapoR(bam_in,ref,sv_info,out_figure_name):
+def vapor_CANNOT_CLASSIFY_VapoR(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['ab_ab', 'b_b^', 'chr7', '70955990', '70961199', '70973901']
     ref_sv=sv_info[0].split('_')
     alt_sv=list_unify([i for i in sv_info[1].split('_') if not i in ref_sv])
@@ -1446,7 +1485,7 @@ def vapor_CANNOT_CLASSIFY_VapoR(bam_in,ref,sv_info,out_figure_name):
             if not window_size=='Error':
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,bp_info[0],flank_length)
                 bp_let_hash=bp_to_chr_hash(bp_info[0],chromos,flank_length)
-                if len(all_reads)>5:
+                if len(all_reads)>num_reads_cff:
                     run_flag+=1
                     bp_let_seq={}
                     for i in list(bp_let_hash.keys()):
@@ -1466,7 +1505,7 @@ def vapor_CANNOT_CLASSIFY_VapoR(bam_in,ref,sv_info,out_figure_name):
                                 if not 0 in vapor_single_read_score:
                                     vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                     if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                            make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,'.'.join(out_figure_name.split('.')[:-1]+[ref_sv[0]+'.vs.'+alt_allele,out_figure_name.split('.')[-1]]))
+                            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,'.'.join(out_figure_name.split('.')[:-1]+[ref_sv[0]+'.vs.'+alt_allele,out_figure_name.split('.')[-1]]))
         if run_flag==0:
             for alt_allele in alt_sv:
                 alt_juncs=block_around_check(alt_allele,ref_sv[0])
@@ -1497,7 +1536,7 @@ def vapor_CANNOT_CLASSIFY_VapoR(bam_in,ref,sv_info,out_figure_name):
                             #            vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
     return vapor_score_list
 
-def vapor_del_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
+def vapor_del_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     sv_block=[sv_info[0][0],sv_info[0][1],sv_info[-1][2]]
     flank_length=flank_length_calculate(sv_block)
     vapor_score_list=[]
@@ -1515,14 +1554,14 @@ def vapor_del_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
                 [window_size,window_size_qc]=window_size_refine(alt_seq)
                 if not window_size=='Error':
                     all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_block[:2]+[sv_block[1]+len(alt_seq)-2*flank_length],flank_length)
-                    if len(all_reads)>0:
+                    if len(all_reads)>num_reads_cff:
                         best_read_rec=''
                         for x in all_reads:
                             vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
                             if not 0 in vapor_single_read_score:
                                 vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                 if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                        make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
                     else:
                         if len(sv_info)==2 and [i[-1] for i in sv_info]==['del','inv']:
                             vapor_score_list=vapor_long_del_inv(bam_in,ref,sv_info,out_figure_name)
@@ -1535,7 +1574,7 @@ def vapor_del_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
             elif 'inv' in sub_sv_info:    vapor_score_list+=vapor_simple_inv_Vapor(bam_in,ref,sub_sv_info[:-1],'.'.join(out_figure_name.split('.')[:-1])+'_'.join([str(i) for i in sub_sv_info])+'.'+out_figure_name.split('.')[-1])
     return vapor_score_list
 
-def vapor_dup_inv_VapoR(bam_in,ref,sv_info,out_figure_name):
+def vapor_dup_inv_VapoR(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 114103333, 114103408, 'chr1', 114111746]
     sv_info[1:3]=[int(i) for i in sv_info[1:3]]
     dup_block=sv_info[:3]
@@ -1557,7 +1596,7 @@ def vapor_dup_inv_VapoR(bam_in,ref,sv_info,out_figure_name):
                 #[ref_bps,alt_bps]=dup_inv_ref_alt_bps_produce(sv_info,flank_length,alt_structure)
                 #dup_block_bps=dup_inv_dup_bps_produce(sv_info,flank_length,alt_structure)
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,[sv_info[0]]+bp_info+[bp_info[-1]+sv_info[2]-sv_info[1]],flank_length)
-                if len(all_reads)>0:
+                if len(all_reads)>num_reads_cff:
                     alt_seq=ref_seq_readin(ref,sv_info[0],min(bp_info)-flank_length,min(bp_info))
                     a_seq=ref_seq_readin(ref,sv_info[0],bp_info[0],bp_info[1])
                     b_seq=ref_seq_readin(ref,sv_info[0],bp_info[1],bp_info[2])
@@ -1575,14 +1614,14 @@ def vapor_dup_inv_VapoR(bam_in,ref,sv_info,out_figure_name):
                             if not 0 in vapor_single_read_score and not math.isnan(vapor_single_read_score[0]) and not math.isnan(vapor_single_read_score[1]):
                                 vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                 if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                        make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
         if run_flag==0:
             if max(bp_info)-min(bp_info)<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
                 ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
                 [window_size,window_size_qc]=window_size_refine(ref_seq)
                 if not window_size=='Error':
                     all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-                    if len(all_reads)>0:
+                    if len(all_reads)>num_reads_cff:
                         alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[1],dup_block[2])))+ref_seq[-flank_length:]
                         [window_size,window_size_qc]=window_size_refine(alt_seq)
                         if not window_size=='Error':
@@ -1592,13 +1631,13 @@ def vapor_dup_inv_VapoR(bam_in,ref,sv_info,out_figure_name):
                                 if not 0 in vapor_single_read_score and not math.isnan(vapor_single_read_score[0]) and not math.isnan(vapor_single_read_score[1]):
                                     vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                     if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                            make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
             else:
                 ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
                 [window_size,window_size_qc]=window_size_refine(ref_seq)
                 if not window_size=='Error':
                     all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-                    if len(all_reads)>0:
+                    if len(all_reads)>num_reads_cff:
                         alt_seq=ref_seq[:flank_length]+reverse(complementary(ref_seq_readin(ref,dup_block[0],dup_block[2]-flank_length,dup_block[2])))
                         [window_size,window_size_qc]=window_size_refine(alt_seq)
                         if not window_size=='Error':
@@ -1608,10 +1647,10 @@ def vapor_dup_inv_VapoR(bam_in,ref,sv_info,out_figure_name):
                                 if not 0 in vapor_single_read_score and not math.isnan(vapor_single_read_score[0]) and not math.isnan(vapor_single_read_score[1]):
                                     vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                     if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                            make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_long_del_inv(bam_in,ref,sv_info,out_figure_name):
+def vapor_long_del_inv(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=[['chr19', 46275941, 46314150, 'del'], ['chr19', 46314150, 46314312, 'inv']]
     vapor_score_list=[]
     best_read_rec=''
@@ -1623,24 +1662,24 @@ def vapor_long_del_inv(bam_in,ref,sv_info,out_figure_name):
         [window_size,window_size_qc]=window_size_refine(alt_seq)
         if not window_size=='Error':
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info[0],flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 best_read_rec=''
                 for x in all_reads:
                     vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
                     if not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_simple_del_Vapor(bam_in,ref,sv_info,out_figure_name):
+def vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
     vapor_score_list=[]
     best_read_rec=''
     if sv_info[2]-sv_info[1]<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
         all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
-        if len(all_reads)>0:
+        if len(all_reads)>num_reads_cff:
             ref_seq=ref_seq_readin(ref,sv_info[0],sv_info[1]-flank_length,sv_info[2]+flank_length)
             [window_size,window_size_qc]=window_size_refine(ref_seq)
             if not window_size=='Error':
@@ -1651,11 +1690,11 @@ def vapor_simple_del_Vapor(bam_in,ref,sv_info,out_figure_name):
                     if not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     else:
         #change the way of read in ref seq
         all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
-        if len(all_reads)>0:
+        if len(all_reads)>num_reads_cff:
             ref_seq=ref_seq_readin(ref,sv_info[0],sv_info[1]-flank_length,sv_info[1]+flank_length)
             [window_size,window_size_qc]=window_size_refine(ref_seq)
             if not window_size=='Error':
@@ -1668,10 +1707,10 @@ def vapor_simple_del_Vapor(bam_in,ref,sv_info,out_figure_name):
                         if not 0 in vapor_single_read_score:
                             vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                             if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                    make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                    make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_simple_tandup_Vapor(bam_in,ref,sv_info,out_figure_name):
+def vapor_simple_tandup_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
    #vapor_simple_del_Vapor(bam_in,ref,x[:-2],out_path+sample_name+'.TANDUP.'+key_event+'.png')
     flank_length=flank_length_calculate(sv_info)
     vapor_score_list=[]
@@ -1684,14 +1723,14 @@ def vapor_simple_tandup_Vapor(bam_in,ref,sv_info,out_figure_name):
             [window_size,window_size_qc]=window_size_refine(alt_seq)
             if not window_size=='Error':
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_info[:2]+[sv_info[1]+2*(sv_info[2]-sv_info[1])],flank_length)
-                if len(all_reads)>10:
+                if len(all_reads)>num_reads_cff:
                     best_read_rec=''
                     for x in all_reads:
                         vapor_single_read_score=calcu_vapor_single_read_score_directed_dis_m1b_redefine_diagnal(ref_seq,alt_seq,x,window_size)
                         if not 0 in vapor_single_read_score:
                             vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                             if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                    make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                    make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
                     return vapor_score_list
     ref_seq=ref_seq_readin(ref,sv_info[0],sv_info[2]-flank_length,sv_info[2]+flank_length)
     [window_size,window_size_qc]=window_size_refine(ref_seq)
@@ -1700,17 +1739,17 @@ def vapor_simple_tandup_Vapor(bam_in,ref,sv_info,out_figure_name):
         [window_size,window_size_qc]=window_size_refine(alt_seq)
         if not window_size=='Error':
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,[sv_info[0],sv_info[2]],flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 best_read_rec=''
                 for x in all_reads:
                     vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
                     if not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_simple_disdup_Vapor(bam_in,ref,sv_info,out_figure_name):
+def vapor_simple_disdup_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     sv_info[1:3]=[int(i) for i in sv_info[1:3]]
     dup_block=sv_info[:3]
     ins_point=[sv_info[3],int(sv_info[4])]
@@ -1724,7 +1763,7 @@ def vapor_simple_disdup_Vapor(bam_in,ref,sv_info,out_figure_name):
         [window_size,window_size_qc]=window_size_refine(ref_seq)
         if not window_size=='Error':
             all_reads=simple_chop_pacbio_read_simple_short(bam_in,[sv_info[0]]+bp_info+[int(bp_info[-1])+sv_info[2]-sv_info[1]],flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 run_flag+=1
                 ref_structure=[i for i in 'ab']
                 if sv_info[4]>sv_info[2]:   alt_structure=['a','b','a']
@@ -1744,11 +1783,11 @@ def vapor_simple_disdup_Vapor(bam_in,ref,sv_info,out_figure_name):
                         if not 0 in vapor_single_read_score:
                             vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                             if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                    make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                    make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     if run_flag==0:
         if max(bp_info)-min(bp_info)<default_max_sv_test: #only try to read in all reads with sv <100K; else: try breakpoints ; 
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
                 [window_size,window_size_qc]=window_size_refine(ref_seq)
                 if not window_size=='Error':
@@ -1761,10 +1800,10 @@ def vapor_simple_disdup_Vapor(bam_in,ref,sv_info,out_figure_name):
                             if not 0 in vapor_single_read_score:
                                 vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                 if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                        make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
         else:
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,ins_point,flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 ref_seq=ref_seq_readin(ref,ins_point[0],ins_point[1]-flank_length,ins_point[1]+flank_length)
                 [window_size,window_size_qc]=window_size_refine(ref_seq)
                 if not window_size=='Error':
@@ -1777,10 +1816,10 @@ def vapor_simple_disdup_Vapor(bam_in,ref,sv_info,out_figure_name):
                             if not 0 in vapor_single_read_score:
                                 vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                 if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                        make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_simple_ins_Vapor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
+def vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
     #eg of ins_pos='chr1_83144055'
     #eg of bam_in='/nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
     #eg of ref='/scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa'
@@ -1792,14 +1831,14 @@ def vapor_simple_ins_Vapor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
     vapor_score_list=[]
     best_read_rec=''
     all_reads=simple_chop_pacbio_read_simple_short(bam_in,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]]+[int(ins_pos.split('_')[-1])+len(ins_seq)],flank_length)
-    if len(all_reads)>0:
+    if len(all_reads)>num_reads_cff:
         ref_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1])+flank_length+len(ins_seq),reverse_flag='FALSE')
-        [window_size,window_size_qc]=window_size_refine(ref_seq)
+        [window_size,window_size_qc]=window_size_refine(ref_seq+ins_seq)
         if not window_size=='Error':
             alt_seq=ref_seq[:flank_length]+ins_seq_2+ref_seq[flank_length:(2*flank_length)]
             if not window_size=='Error':
                 best_read_rec=''
-                if len(all_reads)>10:
+                if len(all_reads)>num_reads_cff:
                     for x in all_reads:
                         if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
                             vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
@@ -1814,11 +1853,12 @@ def vapor_simple_ins_Vapor(bam_in,ref,ins_pos,ins_seq,out_figure_name,POLARITY):
                             if not 0 in vapor_single_read_score:
                                 vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                                 if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                if ins_seq_2.count('X')==len(ins_seq_2):        make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
-                else:            make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                if ins_seq_2.count('X')==len(ins_seq_2):        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
+                else:            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
-def vapor_simple_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
+def vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
+    #vapor_simple_inv_Vapor(bam_in,ref,y,out_path+sample_name+'.INV.'+key_event+'.png')
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
     vapor_score_list=[]
@@ -1831,14 +1871,14 @@ def vapor_simple_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
             [window_size,window_size_qc]=window_size_refine(alt_seq)
             if not window_size=='Error':
                 all_reads=simple_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
-                if len(all_reads)>10:
+                if len(all_reads)>num_reads_cff:
                     best_read_rec=''
                     for x in all_reads:
                         vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
                         if not 0 in vapor_single_read_score:
                             vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                             if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                    make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                    make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
                     return vapor_score_list
     ref_seq=ref_seq_readin(ref,sv_info[0],sv_info[1]-flank_length,sv_info[1]+flank_length)
     [window_size,window_size_qc]=window_size_refine(ref_seq)
@@ -1847,14 +1887,14 @@ def vapor_simple_inv_Vapor(bam_in,ref,sv_info,out_figure_name):
         [window_size,window_size_qc]=window_size_refine(alt_seq)
         if not window_size=='Error':
             all_reads=simple_del_chop_pacbio_read_simple_short(bam_in,sv_info,flank_length)
-            if len(all_reads)>0:
+            if len(all_reads)>num_reads_cff:
                 best_read_rec=''
                 for x in all_reads:
                     vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
                     if not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                make_event_figure_1(vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+                make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
 def vcf_rec_hash_modify(vcf_rec_hash):
@@ -1874,7 +1914,7 @@ def vcf_vapor_modify(vcf_input,vcf_rec_hash_new):
         rec+=1
         pin=line.strip().split()
         if not pin[0][0]=='#':
-            if pin[6]=='PASS':
+            #if pin[6]=='PASS':
                 vcf_info_hash[rec]=pin
     fin.close()
     fin=open(vapor_input)
@@ -1896,6 +1936,7 @@ def vcf_vapor_modify(vcf_input,vcf_rec_hash_new):
 
 def window_size_refine(seq2,region_QC_Cff=0.4):
     window_size=10
+    seq2=''.join([i for i in seq2 if not i=='X'])
     if not seq2.count('N')+seq2.count('n')>100:
         dotdata_qual_check=dotdata(window_size,seq2,seq2)
         if len(dotdata_qual_check)>0:
