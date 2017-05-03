@@ -1962,14 +1962,35 @@ def write_dotdata_to_file(file_out,dotdata_list):
         print(' '.join([str(i) for i in k1]), file=fo)
     fo.close()
 
+def gt_estimate_log_likelihood(vapor_result):
+    read_score_list=[float(i) for i in vapor_result[-1].split(',')]
+    k=len(read_score_list)
+    l=len([i for i in read_score_list if not i>0])
+    m=2
+    likelihood_0_0=log_likelihood_calcu(k,l,m,2)    #g is the number of ref alleles 
+    likelihood_0_1=log_likelihood_calcu(k,l,m,1)
+    likelihood_1_1=log_likelihood_calcu(k,l,m,0)
+    gt_list=['0/0','0/1','1/1']
+    gt_score=[likelihood_0_0,likelihood_0_1,likelihood_1_1]
+    return gt_list[gt_score.index(max(gt_score))]
+
+def log_likelihood_calcu(k,l,m,g,err=0.05):
+    out=-k*np.log(m)
+    for j in range(l):
+        out+=np.log((m-g)*err + g*(1-err))
+    for j in range(k-l):
+        out+=np.log( (m-g)*(1-err) + g*err )
+    return out 
+
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
-    print('\t'.join(['chr','start','end','SV_description','VaPoR_quality_score','VaPoR_genotype_score']), file=fo)
+    print('\t'.join(['chr','start','end','SV_description','VaPoR_qs','VaPoR_gs','VaPoR_GT','VaPoR_Rec']), file=fo)
     fo.close()
 
 def write_output_main(out_name,out_list):
     fo=open(out_name,'a')
-    print('\t'.join([str(i) for i in out_list]), file=fo)
+    if not 'NA' in out_list:    print('\t'.join([str(i) for i in out_list[:-1]+[gt_estimate_log_likelihood(out_list),out_list[-1]]]), file=fo)
+    else:                       print('\t'.join([str(i) for i in out_list[:-1]+['NA','NA']]), file=fo)
     fo.close()
 
 def x_to_x_modify_new(x,dup_block_combined):
