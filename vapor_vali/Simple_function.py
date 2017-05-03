@@ -1832,12 +1832,8 @@ def vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_f
     best_read_rec=''
     all_reads=simple_chop_pacbio_read_simple_short(bam_in,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]]+[int(ins_pos.split('_')[-1])+len(ins_seq)],flank_length)
     if len(all_reads)>num_reads_cff:
-        if len(ins_seq)<10000:
-            ref_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1])+flank_length+len(ins_seq),reverse_flag='FALSE')
-            [window_size,window_size_qc]=window_size_refine(ref_seq+ins_seq)
-        else:
-            ref_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1])+flank_length,reverse_flag='FALSE')
-            [window_size,window_size_qc]=window_size_refine(ref_seq)        
+        ref_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1])+flank_length+len(ins_seq),reverse_flag='FALSE')
+        [window_size,window_size_qc]=window_size_refine(ref_seq+ins_seq)
         if not window_size=='Error':
             alt_seq=ref_seq[:flank_length]+ins_seq_2+ref_seq[flank_length:(2*flank_length)]
             if not window_size=='Error':
