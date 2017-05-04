@@ -1673,6 +1673,15 @@ def vapor_long_del_inv(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
                 make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
+def write_test_data(file_out,ref_dotdata,alt_dotdata):
+    fo=open(file_out+'.ref','w')
+    for i in ref_dotdata:    print('\t'.join([str(j) for j in i]), file=fo)
+    fo.close()
+    fo=open(file_out+'.alt','w')
+    for i in alt_dotdata:    print('\t'.join([str(j) for j in i]), file=fo)
+    fo.close()
+
+
 def vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
@@ -1687,7 +1696,7 @@ def vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_na
                 alt_seq=ref_seq[:flank_length]+ref_seq[-flank_length:]
                 best_read_rec=''
                 for x in all_reads:
-                    vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
+                    vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
                     if not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
