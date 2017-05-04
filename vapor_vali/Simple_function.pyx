@@ -189,9 +189,10 @@ def calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size):
                 else:    
                     return [0,0]
             else:
-                if float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.6: return [1.1,2.1]
-                elif float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.6: return [2.1,1.1]
-                else: return [0,0]
+                return [0,0]
+                #if float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.6: return [1.1,2.1]
+                #elif float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.6: return [2.1,1.1]
+                #else: return [0,0]
         else:    
             return [0,0]
     else:
@@ -1201,7 +1202,7 @@ def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
 
 def result_organize_ins(info_list):
     #eg of info_list=[key_event,vapor_score_event]=['chr2_82961201', [-9.228366096827557, -106.46718851834126, -667.0858781654538, -38.56838396416415, -64.87185751169045, -147.77261544769615, -28.29536680099185, -25.378519434143666, -17.23542013374081, -113.00564782332029, -64.53043553409316]]
-    if len(info_list[1])>0:
+    if len(info_list[1])>1:
         pos_values=[i for i in info_list[1] if float(i)>0.1]
         neg_values=[i for i in info_list[1] if not float(i)>0.1]
         geno_value=float(len(pos_values))/float(len(pos_values)+len(neg_values))
