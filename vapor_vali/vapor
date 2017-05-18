@@ -245,7 +245,7 @@ else:
 									if not sv_pos in out['INV']:	
 										out['INV'].append(sv_pos)
 										vcf_rec_hash[rec]=':'.join([str(i) for i in sv_pos]+['INV'])
-								elif sv_type in ['ins','INS','insertion','LINE1','SVA','ALU']:
+								elif sv_type in ['ins','INS','insertion','LINE1','SVA','ALU','HERVK']:
 									SV_len=int(sv_len_extract(pin))
 									INS_Seq=sv_seq_extract(pin)
 									if SV_len>0:

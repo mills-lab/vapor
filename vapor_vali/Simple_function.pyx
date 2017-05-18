@@ -189,10 +189,9 @@ def calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size):
                 else:    
                     return [0,0]
             else:
-                return [0,0]
-                #if float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.6: return [1.1,2.1]
-                #elif float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.6: return [2.1,1.1]
-                #else: return [0,0]
+                if float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.6: return [1.1,2.1]
+                elif float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.6: return [2.1,1.1]
+                else: return [0,0]
         else:    
             return [0,0]
     else:
@@ -1698,9 +1697,17 @@ def vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_na
                 best_read_rec=''
                 for x in all_reads:
                     vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                    if not 0 in vapor_single_read_score:
+                    vapor_single_read_score_2=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
+                    #for deletions, both calcu should be done to make sure, as I do have the over-pos issue
+                    if not 0 in vapor_single_read_score and not 0 in vapor_single_read_score_2:
+                        vapor_score_list.append(min([1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]) , 1-float(vapor_single_read_score_2[1])/float(vapor_single_read_score_2[0])]))
+                        if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
+                    elif not 0 in vapor_single_read_score:
                         vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
                         if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
+                    elif not 0 in vapor_single_read_score_2:
+                        vapor_score_list.append(1-float(vapor_single_read_score_2[1])/float(vapor_single_read_score_2[0]))
+                        if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x                       
                 make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     else:
         #change the way of read in ref seq
@@ -1939,11 +1946,11 @@ def vcf_vapor_modify(vcf_input,vcf_rec_hash_new):
         if pin[0] in list(vcf_rec_hash_new.keys()):   
             sv_rec_label=vcf_rec_hash_new[pin[0]]
             for y in sv_rec_label:
-                vcf_info_hash[y]+=[round(float(i),2) if not i=='NA' else i for i in pin[1:3]]
+                vcf_info_hash[y]+=[round(float(i),2) if not i=='NA' else i for i in pin[1:3]]+[pin[3]]+[round(float(pin[4]),2) if not pin[4]=='NA' else pin[4]]+[pin[5]]
                 keep_rec.append(y)
     fin.close()
     fo=open(vapor_input,'w')
-    print('\t'.join(['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT','SAMPLE','VaPoR_value','VaPoR_geno']), file=fo)
+    print('\t'.join(['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT','SAMPLE','VaPoR_gs','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
     for k1 in sorted(vcf_info_hash.keys()):
         if k1 in keep_rec:
             print('\t'.join([str(i) for i in vcf_info_hash[k1]]), file=fo)
@@ -1986,7 +1993,9 @@ def gt_estimate_log_likelihood(vapor_result):
     gt_ori_scale=[np.exp(i-max(gt_score)) for i in gt_score]
     gt_norm=[i/sum(gt_ori_scale) for i in gt_ori_scale]
     gt_qual=-np.log(np.median(gt_norm))/np.log(10)
-    return [gt_list[gt_score.index(max(gt_score))],gt_qual]
+    gt_out=gt_list[gt_score.index(max(gt_score))]
+    if gt_out=='0/0' and vapor_result[-2]>.15 : gt_out='0/1'
+    return [gt_out,gt_qual]
 
 def log_likelihood_calcu(k,l,m,g,err=0.05):
     out=-k*np.log(m)
@@ -1998,7 +2007,7 @@ def log_likelihood_calcu(k,l,m,g,err=0.05):
 
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
-    print('\t'.join(['chr','start','end','SV_description','VaPoR_qs','VaPoR_gs','VaPoR_GT','VaPoR_GT_Score','VaPoR_Rec']), file=fo)
+    print('\t'.join(['chr','start','end','SV_description','VaPoR_qs','VaPoR_gs','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
     fo.close()
 
 def write_output_main(out_name,out_list):
