@@ -1956,6 +1956,64 @@ def vcf_vapor_modify(vcf_input,vcf_rec_hash_new):
             print('\t'.join([str(i) for i in vcf_info_hash[k1]]), file=fo)
     fo.close()
 
+def vcf_vapor_modify(vcf_input,vcf_rec_hash_new):
+    vapor_input=vcf_input+'.vapor'
+    vapor_rec={}
+    fin=open(vcf_input)
+    vcf_info_hash={}
+    ## Store meta-information and header for VCF file
+    meta_info=[]
+    header=[]
+    rec=-1
+    for line in fin:
+        pin=line.strip().split()
+        if not pin[0][0]=='#':
+            #if pin[6]=='PASS':
+                rec+=1
+                vcf_info_hash[rec]=pin
+        ## Store meta-information and header VCF file
+        elif not pin[0]=='#CHROM':
+            meta_info.append(pin)
+        else:
+            header=pin
+    fin.close()
+    fin=open(vapor_input)
+    keep_rec=[]
+    for line in fin:
+        pin=line.strip().split()
+        if pin[0] in list(vcf_rec_hash_new.keys()):   
+            sv_rec_label=vcf_rec_hash_new[pin[0]]
+            for y in sv_rec_label:
+                ##                GS=[round(float(i),2) if not i=='NA' else i for i in [pin[2]]]
+                VaPoR_GS=round(float(pin[2]),2) if not pin[2]=='NA' else pin[2]
+                VaPoR_GT=pin[3]
+                VaPoR_GQ=round(float(pin[4]),2) if not pin[4]=='NA' else pin[4]
+                VaPoR_REC=pin[5]
+                ##                vcf_info_hash[y]+=[round(float(i),2) if not i=='NA' else i for i in pin[1:3]]+[pin[3]]+[round(float(pin[4]),2) if not pin[4]=='NA' else pin[4]]+[pin[5]]
+                vcf_info_hash[y][7]+=';VaPor_GS='+str(VaPoR_GS)+';VaPor_GT='+str(VaPoR_GT)+';VaPor_GQ='+str(VaPoR_GQ)+';VaPor_REC='+str(VaPoR_REC)
+                keep_rec.append(y)
+    fin.close()
+    fo=open(vapor_input,'w')
+    prev_meta_data=''
+    current_meta_data=''
+    ## Add vcf meta-information to the file
+    for line in meta_info:
+        joined_line=' '.join(line)
+        current_meta_data=joined_line.split('=')[0]
+        if prev_meta_data=='##INFO' and not current_meta_data=='##INFO':
+            ## Add additional meta-info to file
+            print('##INFO=<ID=VaPoR_GS,Number=1,Type=Float,Description="VaPoR Score, representing the percentage of transverse long reads that support the prediction">', file=fo)
+            print('##INFO=<ID=VaPoR_GT,Number=1,Type=String,Description="Genotype with the highest likelihood as estimated by VaPoR">', file=fo)
+            print('##INFO=<ID=VaPoR_GQ,Number=1,Type=Float,Description="Genotype quality score - likelihood of the second most likely genotype on a -log10 normalized scale"', file=fo)
+            print('##INFO=<ID=VaPoR_REC,Number=.,Type=Float,Description="Similarity scores assigned to each of the reads traversings the predicted SV">', file=fo)
+        print(joined_line, file=fo)
+        prev_meta_data=current_meta_data 
+    print('\t'.join(header), file=fo)
+    for k1 in sorted(vcf_info_hash.keys()):
+        if k1 in keep_rec:
+            print('\t'.join([str(i) for i in vcf_info_hash[k1]]), file=fo)
+    fo.close()
+
 def window_size_refine(seq2,region_QC_Cff=0.4):
     window_size=10
     seq2=''.join([i for i in seq2 if not i=='X'])
