@@ -1,15 +1,15 @@
 # VaPoR
 
-##Description
+## Description
 
-*VaPoR* is a structural variants (SVs) validator based on PacBio long reads.  *VaPoR* reads in BED files or VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
+*VaPoR* is a structural variants (SVs) validator based on long reads from sequencing technology represented by PacBio.  *VaPoR* reads in BED files or VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
 
-##Required third-party resources
+## Required third-party resources
 ```
 python:   https://www.python.org/ 
 samtools: http://samtools.sourceforge.net/
 ```
-##Usage:
+## Usage:
 Usage: vapor [Options] [Parameters]
 
 Options: 
@@ -26,7 +26,7 @@ Parameters:
 
 
 
-##Quick Start
+## Quick Start
 Download and Install
 
 ```
@@ -49,8 +49,8 @@ vapor vcf --sv-input ../input.vcf --output-path ../vapor_result/ --reference ../
 ```
 
 
-##Instructions for input file:
-###SV input in bed format:
+## Instructions for input file:
+### SV input in bed format:
 SV input in bed format should be consist of 4 columns, specifying the chromosome , start, end and description of the variance. The description column should specify the type of the variance (eg. DEL, DUP, INV, INS). For insertions, the description column should have either the sequence of the length of insertion, or both, separated by '_' 
 
 Here's an example of the bed input:
@@ -63,7 +63,7 @@ chr12   28226407        28226407        INS_GTAAGTTCCAGTGATCTATTGTATAGCAGGATGACT
 ```
 
 
-###SV input in vcf format:
+### SV input in vcf format:
 If complex structural variants are encoded within the vcf input, the INFO column should describe the complex event in the similar format as the examples listed below:
 ```
 chr6	119011725	chr6:119011725:119012294:119012497:119013928	t	<DISDUP>	92	PASSSVTYPE=disdup;END=119012294;insert_point=chr6:119013928;Other=abc/abc_abc/abca_chr6:119011725:119012294:119012497:119013928	GT	0/1
