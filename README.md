@@ -1,6 +1,7 @@
 # VaPoR
 
 ##Description
+
 *VaPoR* is a structural variants (SVs) validator based on PacBio long reads.  *VaPoR* reads in BED files or VCF files in format 4.1 or newer, and the corresponding long reads in bam format to score each prediction. 
 
 ##Required third-party resources
