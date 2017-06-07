@@ -122,7 +122,9 @@ else:
 						if len(pin)>4:		out.append([pin[0],int(pin[1]),int(pin[2]),pin[4],'INS'])
 						else:				
 							if not '_' in pin[3]:	continue
-							else:					out.append([pin[0],int(pin[1]),int(pin[2]),int(pin[3].split('_')[1]),'INS'])
+							else:					
+								if pin[3].split('_')[1].isdigit():	out.append([pin[0],int(pin[1]),int(pin[2]),int(pin[3].split('_')[1]),'INS'])
+								else:out.append([pin[0],int(pin[1]),int(pin[2]),pin[3].split('_')[1],'INS'])
 				return out
 			#command='vapor bed --sv-input /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/HG00513.ALL.wgs.integrated_sv_map_v2.20130502.svs.genotypes.hg38 --output-path /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/VaPoR_Vali_HG00513/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
 			from vapor_vali.Simple_function import *
@@ -169,8 +171,7 @@ else:
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
 					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+vapor_result[1:])
 					print (vapor_result)
-				else:
-					print (x)
+				else:	print (x)
 	elif function_name=='vcf':
 		if len(sys.argv)==2:
 			import vapor_vali.prep as prep

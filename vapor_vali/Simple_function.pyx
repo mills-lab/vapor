@@ -158,6 +158,8 @@ def calcu_log10(x):
         return np.log10(x)
 
 def calcu_vapor_single_read_score_abs_dis_m1(ref_seq,alt_seq,x,window_size):
+    ref_seq=ref_seq.upper()
+    alt_seq=alt_seq.upper()
     ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
     alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
     if float(len(ref_dotdata))/float(len(ref_seq))>0.1 and float(len(alt_dotdata))/float(len(alt_seq))>0.1 and float(ref_dotdata[-1][0]-ref_dotdata[0][0])/float(len(ref_seq))>0.7 and float(alt_dotdata[-1][0]-alt_dotdata[0][0])/float(len(alt_seq))>0.7:
@@ -177,6 +179,8 @@ def calcu_vapor_single_read_score_abs_dis_m1(ref_seq,alt_seq,x,window_size):
         return [0,0]
 
 def calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size):
+    ref_seq=ref_seq.upper()
+    alt_seq=alt_seq.upper()
     ref_dotdata=dotdata(window_size,x[0],ref_seq[x[1]:])
     alt_dotdata=dotdata(window_size,x[0],alt_seq[x[1]:])
     if len(ref_dotdata)>2 and len(alt_dotdata)>2:
@@ -1841,10 +1845,8 @@ def vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_f
     #eg of ins_pos='chr1_83144055'
     #eg of bam_in='/nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
     #eg of ref='/scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa'
-    if POLARITY=='+':
-        ins_seq_2=ins_seq
-    elif POLARITY=='-':
-        ins_seq_2=reverse(complementary(ins_seq))
+    if POLARITY=='+':    ins_seq_2=ins_seq
+    elif POLARITY=='-':   ins_seq_2=reverse(complementary(ins_seq))
     flank_length=default_flank_length if len(ins_seq)>default_flank_length else len(ins_seq)
     vapor_score_list=[]
     best_read_rec=''
@@ -1857,26 +1859,25 @@ def vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_f
             ref_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1])+flank_length,reverse_flag='FALSE')
             [window_size,window_size_qc]=window_size_refine(ref_seq)        
         if not window_size=='Error':
-            alt_seq=ref_seq[:flank_length]+ins_seq_2+ref_seq[flank_length:(2*flank_length)]
-            if not window_size=='Error':
-                best_read_rec=''
-                if len(all_reads)>num_reads_cff:
-                    for x in all_reads:
-                        if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
-                            vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
-                            if not 0 in vapor_single_read_score:
-                                vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
-                                if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                else:
-                    all_reads=simple_chop_pacbio_read_simple_short(bam_in,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]]+[int(ins_pos.split('_')[-1])],flank_length)
-                    for x in all_reads:
-                        if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
-                            vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
-                            if not 0 in vapor_single_read_score:
-                                vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
-                                if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
-                if ins_seq_2.count('X')==len(ins_seq_2):        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
-                else:            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
+            alt_seq=ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1])-flank_length,int(ins_pos.split('_')[-1]),reverse_flag='FALSE')+ins_seq_2+ref_seq_readin(ref,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]][0],int(ins_pos.split('_')[-1]),int(ins_pos.split('_')[-1])+flank_length,reverse_flag='FALSE')
+            best_read_rec=''
+            if len(all_reads)>num_reads_cff:
+                for x in all_reads:
+                    if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
+                        vapor_single_read_score=calcu_vapor_single_read_score_abs_dis_m1b(ref_seq,alt_seq,x,window_size)
+                        if not 0 in vapor_single_read_score:
+                            vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
+                            if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
+            else:
+                all_reads=simple_chop_pacbio_read_simple_short(bam_in,['_'.join(ins_pos.split('_')[:-1]),ins_pos.split('_')[-1]]+[int(ins_pos.split('_')[-1])],flank_length)
+                for x in all_reads:
+                    if float(x[0].count('N')+x[0].count('n'))/float(len(x[0]))<0.1:
+                        vapor_single_read_score=calcu_vapor_single_read_score_within_10Perc_m1b(ref_seq,alt_seq,x,window_size)
+                        if not 0 in vapor_single_read_score:
+                            vapor_score_list.append(1-float(vapor_single_read_score[1])/float(vapor_single_read_score[0]))
+                            if vapor_score_list[-1]==max(vapor_score_list):best_read_rec=x
+            if ins_seq_2.count('X')==len(ins_seq_2):        make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,ref_seq[2:flank_length],out_figure_name)
+            else:            make_event_figure_1(plt_li,vapor_score_list,best_read_rec,window_size,ref_seq,alt_seq,out_figure_name)
     return vapor_score_list
 
 def vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
