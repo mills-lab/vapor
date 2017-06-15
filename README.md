@@ -63,6 +63,7 @@ chr12   28226407        28226407        INS_GTAAGTTCCAGTGATCTATTGTATAGCAGGATGACT
 ```
 ### SV output for input in bed format:
 additional columns would be added to the bed format:
+
 	VaPoR_qs: highest score of assessed read
 	VaPoR_gs: proportion of reads supportive of predicted structure versus all reads assessed
 	VaPoR_GT: genotype of the proposed SV as assessed by VaPoR
@@ -84,8 +85,9 @@ chr7	40412883	chr7:40412883:40412973:40413111	A	<DUP_INV>	98	PASS	SVTYPE=dup_inv
 
 ### SV output for input in vcf format:
 additional information will be added to the info column of the VCF:
-##INFO=<ID=VaPoR_GS,Number=1,Type=Float,Description="VaPoR Score, representing the percentage of transverse long reads that support the prediction">'
-##INFO=<ID=VaPoR_GT,Number=1,Type=String,Description="Genotype with the highest likelihood as estimated by VaPoR">'
-##INFO=<ID=VaPoR_GQ,Number=1,Type=Float,Description="Genotype quality score - likelihood of the second most likely genotype on a -log10 normalized scale"'
-##INFO=<ID=VaPoR_REC,Number=.,Type=Float,Description="Similarity scores assigned to each of the reads traversings the predicted SV">'
+
+	##INFO=<ID=VaPoR_GS,Number=1,Type=Float,Description="VaPoR Score, representing the percentage of transverse long reads that support the prediction">'
+	##INFO=<ID=VaPoR_GT,Number=1,Type=String,Description="Genotype with the highest likelihood as estimated by VaPoR">'
+	##INFO=<ID=VaPoR_GQ,Number=1,Type=Float,Description="Genotype quality score - likelihood of the second most likely genotype on a -log10 normalized scale"'
+	##INFO=<ID=VaPoR_REC,Number=.,Type=Float,Description="Similarity scores assigned to each of the reads traversings the predicted SV">'
  
