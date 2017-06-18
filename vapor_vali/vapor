@@ -309,19 +309,31 @@ else:
 						if not 'NA' in y:
 							print (y)
 							#eg of y=['chr1', '91666237', '91667096']
-							key_event=':'.join([str(i) for i in y]+['DEL'])
-							plt_li+=1
-							vapor_score_event=vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,y,out_path+sample_name+'.DEL.'+key_event.replace(':','__')+'.png')
-							write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
+							if y[2]-y[1]<50: 
+								key_event=':'.join([str(i) for i in y]+['DEL'])
+								plt_li+=1
+								vapor_score_event=[]
+								write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
+							else:
+								key_event=':'.join([str(i) for i in y]+['DEL'])
+								plt_li+=1
+								vapor_score_event=vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,y,out_path+sample_name+'.DEL.'+key_event.replace(':','__')+'.png')
+								write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
 				elif x=='INV':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
 							print (y)
 							#eg of y=['chr1', '91666237', '91667096']
-							key_event=':'.join([str(i) for i in y]+['INV'])
-							plt_li+=1
-							vapor_score_event=vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,y,out_path+sample_name+'.INV.'+key_event.replace(':','__')+'.png')
-							write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
+							if y[2]-y[1]<50: 
+								key_event=':'.join([str(i) for i in y]+['DEL'])
+								plt_li+=1
+								vapor_score_event=[]
+								write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
+							else:
+								key_event=':'.join([str(i) for i in y]+['INV'])
+								plt_li+=1
+								vapor_score_event=vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,y,out_path+sample_name+'.INV.'+key_event.replace(':','__')+'.png')
+								write_output_main(vcf_input+'.vapor',result_organize_ins([key_event,vapor_score_event]))
 				elif x=='INS':
 					for y in vcf_list[x]:
 						if not 'NA' in y:
