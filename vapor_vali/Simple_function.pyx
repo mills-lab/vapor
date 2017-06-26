@@ -1,6 +1,7 @@
 from __future__ import print_function
 
-import os,sys
+import os
+import sys
 import itertools,math,random,numpy,scipy
 import matplotlib as mpl
 mpl.use('Agg')
