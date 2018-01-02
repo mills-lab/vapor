@@ -2067,7 +2067,7 @@ def log_likelihood_calcu(k,l,m,g,err=0.05):
 
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
-    print('\t'.join(['CHR','POS','END','SVTYPE','VaPoR_qs','VaPoR_gs','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
+    print('\t'.join(['CHR','POS','END','SVTYPE','VaPoR_QS','VaPoR_GS','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
     fo.close()
 
 def write_output_main(out_name,out_list):
