@@ -284,6 +284,7 @@ else:
 										info=[i for i in pin[7].split(';') if i[:6]=='Other=']
 									elif 'OTHER=' in pin[7]:
 										info=[i for i in pin[7].split(';') if i[:6]=='OTHER=']
+									else: continue
 									sv_other_info=info[0].split('=')[1].split('_')
 									if not 'Other' in list(out.keys()):	out['Other']=[]
 									if not ['_'.join(i.split('/')) for i in sv_other_info[:2]]+sv_other_info[2].split(':') in out['Other']:	
