@@ -279,6 +279,7 @@ else:
 									if not sv_pos in out['TANDUP']:	
 										out['TANDUP'].append(sv_pos)
 										vcf_rec_hash[rec]=':'.join([str(i) for i in sv_pos]+['TANDUP'])
+								elif sv_type in ['CNV','CSV','CPX']: continue
 								else:
 									if 'Other=' in pin[7]:
 										info=[i for i in pin[7].split(';') if i[:6]=='Other=']
