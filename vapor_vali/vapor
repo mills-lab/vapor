@@ -125,15 +125,14 @@ else:
 						if len(pin)>5:		
 							out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],pin[5],'INS'])
 						else:				
-							if not '_' in pin[3]:	
+							if not '_' in pin[4]:	
 								continue
 							else:					
-								if pin[3].split('_')[1].isdigit():	
+								if pin[4].split('_')[1].isdigit():	
 									out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],int(pin[4].split('_')[1]),'INS'])
 								else:
 									out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],pin[4].split('_')[1],'INS'])
 				return out
-			#command='vapor bed --sv-input /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/HG00513.ALL.wgs.integrated_sv_map_v2.20130502.svs.genotypes.hg38 --output-path /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/VaPoR_Vali_HG00513/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
 			from vapor_vali.Simple_function import *
 			opts,args=getopt.getopt(sys.argv[2:],'i:',['sv-input=','reference=','pacbio-input=','output-path=','sv-type=','size-cff=','PB-supp='])
 			dict_opts=dict(opts)
@@ -166,8 +165,8 @@ else:
 					plt_li+=1
 					ins_pos='_'.join([str(i) for i in x[:2]])
 					POLARITY='+'
-					if type(x[3])==type(3):					ins_seq=''.join(['X' for i in range(x[3])])
-					else:									ins_seq=x[3]
+					if type(x[4])==type(4):					ins_seq=''.join(['X' for i in range(x[4])])
+					else:									ins_seq=x[4]
 					vapor_score_event=vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event.replace(':','__')+'.png',POLARITY)
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
 					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+[x[3]]+vapor_result[1:])
