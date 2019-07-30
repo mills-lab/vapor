@@ -113,18 +113,25 @@ else:
 				for line in fin:
 					pin=line.strip().split()
 					#test.append(pin)
-					if 'DUP' in pin[3] or 'duplication' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/aa'])
+					if 'DUP' in pin[4] or 'duplication' in pin[4]:	
+						out.append([pin[0]]+[int(i) for i in pin[1:3]]+[pin[3]]+['a/a','a/aa'])
 						#if not '_' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/aa'])
 						#else:					out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/'.join([ ''.join(['a' for i in range(int(pin[3].split('_')[1].replace('<CN','').replace('>','')))]),''.join(['a' for i in range(int(pin[3].split('_')[2].replace('<CN','').replace('>','')))])])])
-					elif 'DEL' in pin[3] or 'deletion' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','/a'])
-					elif 'INV' in pin[3] or 'inversion' in pin[3]:	out.append([pin[0]]+[int(i) for i in pin[1:3]]+['a/a','a/a^'])
-					elif 'INS' in pin[3] or 'ALU' in pin[3] or 'HERVK' in pin[3] or 'LINE1' in pin[3] or 'SVA' in pin[3] or 'insertion' in pin[3]:
-						if len(pin)>4:		out.append([pin[0],int(pin[1]),int(pin[2]),pin[4],'INS'])
+					elif 'DEL' in pin[4] or 'deletion' in pin[4]:	
+						out.append([pin[0]]+[int(i) for i in pin[1:3]]+[pin[3]]+['a/a','/a'])
+					elif 'INV' in pin[4] or 'inversion' in pin[4]:	
+						out.append([[0]]+[int(i) for i in pin[1:3]]+[pin[3]]+['a/a','a/a^'])
+					elif 'INS' in pin[4] or 'ALU' in pin[4] or 'HERVK' in pin[4] or 'LINE1' in pin[4] or 'SVA' in pin[4] or 'insertion' in pin[4]:
+						if len(pin)>5:		
+							out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],pin[5],'INS'])
 						else:				
-							if not '_' in pin[3]:	continue
+							if not '_' in pin[3]:	
+								continue
 							else:					
-								if pin[3].split('_')[1].isdigit():	out.append([pin[0],int(pin[1]),int(pin[2]),int(pin[3].split('_')[1]),'INS'])
-								else:out.append([pin[0],int(pin[1]),int(pin[2]),pin[3].split('_')[1],'INS'])
+								if pin[3].split('_')[1].isdigit():	
+									out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],int(pin[4].split('_')[1]),'INS'])
+								else:
+									out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],pin[4].split('_')[1],'INS'])
 				return out
 			#command='vapor bed --sv-input /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/HG00513.ALL.wgs.integrated_sv_map_v2.20130502.svs.genotypes.hg38 --output-path /scratch/remills_flux/xuefzhao/VaPoR/1000genome_vcf/VaPoR_Vali_HG00513/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00513.XXX.bam'
 			from vapor_vali.Simple_function import *
@@ -132,7 +139,8 @@ else:
 			dict_opts=dict(opts)
 			[out_path,bed_input,sample_name,bam_in,ref]=[dict_opts['--output-path'],dict_opts['--sv-input'],'.'.join(dict_opts['--sv-input'].split('/')[-1].split('.')[:-1]),dict_opts['--pacbio-input'],dict_opts['--reference']]
 			num_reads_cff=3
-			if '--PB-supp' in dict_opts.keys():	num_reads_cff=int(dict_opts['--PB-supp'])
+			if '--PB-supp' in dict_opts.keys():	
+				num_reads_cff=int(dict_opts['--PB-supp'])
 			out_path=path_modify(out_path)
 			path_mkdir(out_path)
 			bed_info=bed_info_readin(bed_input,out_path,sample_name,bam_in,ref)
@@ -140,21 +148,21 @@ else:
 			plt_li=0
 			for x in bed_info:
 				if x[-1] in ['a/','/a','/','DEL']:
-					key_event=':'.join([str(i) for i in x[:-2]]+['DEL'])
+					key_event=':'.join([str(i) for i in x[:-3]]+['DEL'])
 					plt_li+=1
-					vapor_score_event=vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-2],out_path+sample_name+'.DEL.'+key_event.replace(':','__')+'.png')
+					vapor_score_event=vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-3],out_path+sample_name+'.DEL.'+key_event.replace(':','__')+'.png')
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
-					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+vapor_result[1:])
+					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+[x[3]]+vapor_result[1:])
 					print (vapor_result)
 				elif x[-1] in ['a/a^','a^/a','a^/a^','INV']:	
-					key_event=':'.join([str(i) for i in x[:-2]]+['INV'])
+					key_event=':'.join([str(i) for i in x[:-3]]+['INV'])
 					plt_li+=1
-					vapor_score_event=vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-2],out_path+sample_name+'.INV.'+key_event.replace(':','__')+'.png')
+					vapor_score_event=vapor_simple_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-3],out_path+sample_name+'.INV.'+key_event.replace(':','__')+'.png')
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
-					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+vapor_result[1:])
+					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+[x[3]]+vapor_result[1:])
 					print (vapor_result)
 				elif x[-1] in ['INS']:
-					key_event=':'.join([str(i) for i in x[:-2]+['INS']])
+					key_event=':'.join([str(i) for i in x[:-3]+['INS']])
 					plt_li+=1
 					ins_pos='_'.join([str(i) for i in x[:2]])
 					POLARITY='+'
@@ -162,14 +170,14 @@ else:
 					else:									ins_seq=x[3]
 					vapor_score_event=vapor_simple_ins_Vapor(num_reads_cff,plt_li,bam_in,ref,ins_pos,ins_seq,out_path+sample_name+'.INS.'+key_event.replace(':','__')+'.png',POLARITY)
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
-					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+vapor_result[1:])
+					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+[x[3]]+vapor_result[1:])
 					print (vapor_result)
 				elif x[-1] in ['a/aa','aa/a','aa/aa','DUP','TANDUP']:
-					key_event=':'.join([str(i) for i in x[:-2]]+['TANDUP'])
+					key_event=':'.join([str(i) for i in x[:-3]]+['TANDUP'])
 					plt_li+=1
-					vapor_score_event=vapor_simple_tandup_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-2],out_path+sample_name+'.TANDUP.'+key_event.replace(':','__')+'.png')
+					vapor_score_event=vapor_simple_tandup_Vapor(num_reads_cff,plt_li,bam_in,ref,x[:-3],out_path+sample_name+'.TANDUP.'+key_event.replace(':','__')+'.png')
 					vapor_result=result_organize_ins([key_event,vapor_score_event])
-					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+vapor_result[1:])
+					write_output_main(bed_input+'.vapor',vapor_result[0].split(':')+[x[3]]+vapor_result[1:])
 					print (vapor_result)
 				else:	print (x)
 	elif function_name=='vcf':
@@ -387,6 +395,9 @@ else:
 			vcf_vapor_modify(vcf_input,vcf_rec_hash_new)
 	elif function_name=='svelter':
 		#command='vapor svelter --sv-input /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version16/HG00512.alt_bwamem_GRCh38DH.20150715.CHS.high_coverage.svelter --output-path /scratch/remills_flux/xuefzhao/SV_discovery_index/download/SVelter.version16/HG00512.svelter.vapor/  --reference /scratch/remills_flux/xuefzhao/reference/GRCh38.1KGP/GRCh38_full_analysis_set_plus_decoy_hla.fa --pacbio-input /nfs/turbo/remillsscr/scratch2_trans/datasets/1000genomes/vol1/ftp/data_collections/hgsv_sv_discovery/PacBio/alignment/HG00512.XXX.bam'
+		def file_initiate(filename):
+			fo=open(filename,'w')
+			fo.close()
 		def Command_parametre_readin():
 			global lenght_cff
 			lenght_cff=100
@@ -432,7 +443,7 @@ else:
 			case_number=-1
 			global qc_file_name
 			qc_file_name=out_path+'reference_QC.rec'
-			qc_ref_file_initiate(qc_file_name)
+			file_initiate(qc_file_name)
 		def svelter_readin(file_in):
 			fin=open(file_in)
 			header=fin.readline().strip().split()
