@@ -1573,7 +1573,7 @@ def vapor_del_inv_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name)
                             vapor_score_list=vapor_long_del_inv(bam_in,ref,sv_info,out_figure_name)
         else:
             if len(sv_info)==2 and [i[-1] for i in sv_info]==['del','inv']:
-                vapor_score_list=vapor_long_del_inv(bam_in,ref,sv_info,out_figure_name)
+                vapor_score_list=vapor_long_del_inv(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name)
     else:
         for sub_sv_info in sv_info:
             if 'del' in sub_sv_info:    vapor_score_list+=vapor_simple_del_Vapor(bam_in,ref,sub_sv_info[:-1],'.'.join(out_figure_name.split('.')[:-1])+'_'.join([str(i) for i in sub_sv_info])+'.'+out_figure_name.split('.')[-1])
@@ -2067,7 +2067,7 @@ def log_likelihood_calcu(k,l,m,g,err=0.05):
 
 def write_output_initiate(out_name):
     fo=open(out_name,'w')
-    print('\t'.join(['CHR','POS','END','SVTYPE','VaPoR_QS','VaPoR_GS','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
+    print('\t'.join(['CHR','POS','END','SVTYPE','SVID','VaPoR_QS','VaPoR_GS','VaPoR_GT','VaPoR_GQ','VaPoR_Rec']), file=fo)
     fo.close()
 
 def write_output_main(out_name,out_list):
