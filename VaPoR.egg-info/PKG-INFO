@@ -1,0 +1,20 @@
+Metadata-Version: 1.1
+Name: VaPoR
+Version: 0.0.1
+Summary: PacBio long read based genomic structural variants validator.
+Home-page: UNKNOWN
+Author: Xuefang Zhao, University of Michigan
+Author-email: xuefzhao@umich.edu
+License: Propriety
+Description: UNKNOWN
+Keywords: Long read
+Platform: UNKNOWN
+Classifier: Development Status :: 1 - Planning
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Information Technology
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: Other/Proprietary License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2 :: Only
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
