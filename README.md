@@ -21,9 +21,9 @@ Parameters:
 
 	--sv-input:		input file in bed or vcf format
 	--output-path:		folder where the recurrence plot will be kept
+	--output-name:		name of output file 
 	--reference:		reference genome that pacbio files are aligned against
 	--pacbio-input:		absolute path of input pacbio file
-
 
 
 ## Quick Start
