@@ -34,7 +34,7 @@ def readme_bed():
 	print ('Parameters:')
 	print ('	--sv-input:		input file in bed format with SV type labeled in the last column')
 	print ('	--output-path:		folder where the recurrence plot will be kept')
-	print ('	--output-name:		name of output file including vapor scores')
+	print ('	--output-file:		name of output file including vapor scores')
 	print ('	--reference:		reference genome that pacbio files are aligned against')
 	print ('	--pacbio-input:		absolute path of input pacbio file')
 

@@ -134,9 +134,9 @@ else:
 									out.append([pin[0],int(pin[1]),int(pin[2]),pin[3],pin[4].split('_')[1],'INS'])
 				return out
 			from vapor_vali.Simple_function import *
-			opts,args=getopt.getopt(sys.argv[2:],'i:',['sv-input=','reference=','pacbio-input=','output-path=','sv-type=','size-cff=','PB-supp=','output-name='])
+			opts,args=getopt.getopt(sys.argv[2:],'i:',['sv-input=','reference=','pacbio-input=','output-path=','sv-type=','size-cff=','PB-supp=','output-file='])
 			dict_opts=dict(opts)
-			[out_name, out_path, bed_input, sample_name, bam_in, ref]=[dict_opts['--output-name'], dict_opts['--output-path'],dict_opts['--sv-input'],'.'.join(dict_opts['--sv-input'].split('/')[-1].split('.')[:-1]),dict_opts['--pacbio-input'],dict_opts['--reference']]
+			[out_name, out_path, bed_input, sample_name, bam_in, ref]=[dict_opts['--output-file'], dict_opts['--output-path'],dict_opts['--sv-input'],'.'.join(dict_opts['--sv-input'].split('/')[-1].split('.')[:-1]),dict_opts['--pacbio-input'],dict_opts['--reference']]
 			num_reads_cff=3
 			if '--PB-supp' in dict_opts.keys():	
 				num_reads_cff=int(dict_opts['--PB-supp'])
