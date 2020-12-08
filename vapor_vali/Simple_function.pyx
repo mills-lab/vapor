@@ -1686,7 +1686,6 @@ def write_test_data(file_out,ref_dotdata,alt_dotdata):
     for i in alt_dotdata:    print('\t'.join([str(j) for j in i]), file=fo)
     fo.close()
 
-
 def vapor_simple_del_Vapor(num_reads_cff,plt_li,bam_in,ref,sv_info,out_figure_name):
     #eg of sv_info=['chr1', 101553562, 101553905]
     flank_length=flank_length_calculate(sv_info)
