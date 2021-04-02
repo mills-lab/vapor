@@ -1207,8 +1207,8 @@ def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
 def result_organize_ins(info_list):
     #eg of info_list=[key_event,vapor_score_event]=['chr2_82961201', [-9.228366096827557, -106.46718851834126, -667.0858781654538, -38.56838396416415, -64.87185751169045, -147.77261544769615, -28.29536680099185, -25.378519434143666, -17.23542013374081, -113.00564782332029, -64.53043553409316]]
     if len(info_list[1])>1:
-        pos_values=[i for i in info_list[1] if float(i)>0.1]
-        neg_values=[i for i in info_list[1] if not float(i)>0.1]
+        pos_values=[i for i in info_list[1] if float(i)>0]
+        neg_values=[i for i in info_list[1] if not float(i)>0]
         geno_value=float(len(pos_values))/float(len(pos_values)+len(neg_values))
         if not pos_values==[]:
             qual_value=np.mean(pos_values)
