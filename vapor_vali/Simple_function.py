@@ -1080,12 +1080,12 @@ def minimize_pacbio_read_list(x,ideal_list_length=20):
     if len(x)>ideal_list_length:
         out=[]
         temp_hash={}
-        for x in x:
-            if not x[1] in list(temp_hash.keys()):    temp_hash[x[1]]=[x]
-            else:    temp_hash[x[1]]+=[x]
-        for x in sorted(temp_hash.keys()):
-            if len(out)<ideal_list_length:    out+=temp_hash[x]
-            return out[:ideal_list_length]
+        for y in x:
+            if not y[1] in list(temp_hash.keys()):    temp_hash[y[1]]=[y]
+            else:    temp_hash[y[1]]+=[y]
+        for y in sorted(temp_hash.keys()):
+            if len(out)<ideal_list_length:    out+=temp_hash[y]
+        return out[:ideal_list_length]
     else: return x
 
 def number_cluster(dis_to_diagnal_list,dis_range):
