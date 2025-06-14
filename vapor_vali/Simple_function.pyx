@@ -506,7 +506,7 @@ def compute_bic(kmeans,X):
             cl_var.append(float(10**20) * sum(distance.cdist(X[np.where(labels == i)], [centers[0][i]], 'euclidean')**2))
     const_term = 0.5 * m * calcu_log10(N)
     removed_indices = find_removed_indices_with_negative(cl_var)
-    print(n, N, d, const_term, cl_var, removed_indices)
+    #print(n, N, d, const_term, cl_var, removed_indices)
     n =  [arr for i, arr in enumerate(n) if i not in removed_indices]
     cl_var = [arr for i, arr in enumerate(cl_var) if i not in removed_indices]
     BIC = np.sum([n[i] * calcu_log10(n[i]) -
