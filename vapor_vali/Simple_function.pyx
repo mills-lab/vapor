@@ -140,7 +140,7 @@ def block_modify(block,chromos):
         if len(x)==3:
             out_new_2.append(x)
         else:
-            for y in range((len(x)-1)/2):
+            for y in range(int((len(x)-1)/2)):
                 out_new_2.append([x[0],x[2*y+1],x[2*y+2]])
     return out_new_2
 
@@ -505,12 +505,24 @@ def compute_bic(kmeans,X):
         else:
             cl_var.append(float(10**20) * sum(distance.cdist(X[np.where(labels == i)], [centers[0][i]], 'euclidean')**2))
     const_term = 0.5 * m * calcu_log10(N)
+    removed_indices = find_removed_indices_with_negative(cl_var)
+    print(n, N, d, const_term, cl_var, removed_indices)
+    n =  [arr for i, arr in enumerate(n) if i not in removed_indices]
+    cl_var = [arr for i, arr in enumerate(cl_var) if i not in removed_indices]
     BIC = np.sum([n[i] * calcu_log10(n[i]) -
            n[i] * calcu_log10(N) -
          ((n[i] * d) / 2) * calcu_log10(2*np.pi) -
           (n[i] / 2) * calcu_log10(cl_var[i]) -
-         ((n[i] - m) / 2) for i in range(m)]) - const_term
+         ((n[i] - m) / 2) for i in range(len(n))]) - const_term
     return(BIC)
+
+def find_removed_indices_with_negative(arrays):
+    removed_indices = []
+    for i, arr in enumerate(arrays):
+        arrays[i] = [0.0 if x == -0.0 else x for x in arr]
+        if any(x < 0 for x in arrays[i]):
+            removed_indices.append(i)
+    return removed_indices
 
 def dup_inv_ref_alt_bps_produce(sv_info,flank_length,alt_structure):
     bp_info=sorted(sv_info[1:3]+[sv_info[4]])
@@ -1206,7 +1218,7 @@ def ref_seq_readin(ref,chrom,start,end,reverse_flag='FALSE'):
 
 def result_organize_ins(info_list):
     #eg of info_list=[key_event,vapor_score_event]=['chr2_82961201', [-9.228366096827557, -106.46718851834126, -667.0858781654538, -38.56838396416415, -64.87185751169045, -147.77261544769615, -28.29536680099185, -25.378519434143666, -17.23542013374081, -113.00564782332029, -64.53043553409316]]
-    if len(info_list[1])>1:
+    if len(info_list[1])>0:
         pos_values=[i for i in info_list[1] if float(i)>0]
         neg_values=[i for i in info_list[1] if not float(i)>0]
         geno_value=float(len(pos_values))/float(len(pos_values)+len(neg_values))
@@ -1444,8 +1456,8 @@ def sv_insert_point_define(pin):
     return svtype
 
 def take_off_symmetric_dots(list_dotdata):
-    left_part=[list_dotdata[i] for i in range(len(list_dotdata)/2)]
-    right_part=[list_dotdata[i][::-1] for i in [len(list_dotdata)-1-i for i in range(len(list_dotdata)/2)]]
+    left_part=[list_dotdata[i] for i in range(int(len(list_dotdata)/2))]
+    right_part=[list_dotdata[i][::-1] for i in [len(list_dotdata)-1-i for i in range(int(len(list_dotdata)/2))]]
     left_new=[i for i in left_part if eu_dis_single_dot(i)>0.15]
     right_new=[i for i in right_part if eu_dis_single_dot(i)>0.15]
     sym_dots=[]
@@ -2099,6 +2111,6 @@ def X_means_cluster(data_list):
 def X_means_cluster_reformat(data_list):
     out=X_means_cluster(data_list)
     out2=[]
-    for y in range(len(out)/2):
+    for y in range(int(len(out)/2)):
         out2.append([out[2*y],out[2*y+1]])
     return out2
